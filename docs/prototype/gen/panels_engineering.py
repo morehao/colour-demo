@@ -8,6 +8,15 @@ import colour
 
 import matplotlib.pyplot as plt  # noqa: E402
 
+from colour.algebra import (  # noqa: E402
+    CubicSplineInterpolator,
+    LinearInterpolator,
+    PchipInterpolator,
+    SpragueInterpolator,
+    table_interpolation_tetrahedral,
+    table_interpolation_trilinear,
+)
+
 from .common import (
     chart,
     delta_e,
@@ -270,10 +279,23 @@ def panel_notation() -> dict:
                     ("xyY → Munsell", f"{vec(xyY, 4)} → {back}", "xyY_to_munsell_colour（反向不唯一）"),
                     ("CSS 关键字", f"tomato → {vec(css_rgb, 3)} → {rgb_to_hex(css_rgb).upper()}", "keyword_to_RGB_CSSColor3"),
                     ("HEX", f"#3B82F6 → {vec(hex_rgb, 3)}", "HEX_to_RGB / RGB_to_HEX"),
-                    ("色名集合", f"{len(colour.notation.CSS_COLOR_3_BASIC)} 基础色 + {len(colour.notation.CSS_COLOR_3)} 全部关键字", "CSS Color 3"),
-                    ("Munsell 色卡", f"{len(colour.notation.MUNSELL_COLOURS_ALL)} 个真实色样", "MUNSELL_COLOURS_ALL"),
+                    ("色名集合", f"{len(colour.notation.CSS_COLOR_3)} 个关键字（含 {len(colour.notation.CSS_COLOR_3_BASIC)} 基础色、{len(colour.notation.CSS_COLOR_3_EXTENDED)} 扩展色）", "CSS Color 3"),
+                    ("Munsell 色卡", f"{len(colour.notation.MUNSELL_COLOURS_ALL)} 个色样（REAL {len(colour.notation.MUNSELL_COLOURS_REAL)} / 1929 {len(colour.notation.MUNSELL_COLOURS_1929)}）", "MUNSELL_COLOURS_ALL"),
                 ],
                 title="解析结果",
+            ),
+            swatches(
+                [
+                    # CSS_COLOR_3_BASIC 存的是十六进制字符串，这里走一遍 keyword_to_RGB_CSSColor3 实算再转回 HEX
+                    (
+                        rgb_to_hex(colour.notation.keyword_to_RGB_CSSColor3(name)).upper(),
+                        name,
+                        f"表内 {hex_value.upper()}",
+                    )
+                    for name, hex_value in colour.notation.CSS_COLOR_3_BASIC.items()
+                ],
+                title="CSS Color 3 的 16 个基础色名（keyword_to_RGB_CSSColor3 实算）",
+                cols=8,
             ),
             table(["Munsell 明度值算法", "V(Y=5)"], rows, title="七种明度换算", mono=[0, 1], widths=["200px", "120px"]),
             note(
@@ -292,41 +314,58 @@ def panel_notation() -> dict:
 # 22 连续信号与插值器
 # --------------------------------------------------------------------------- #
 def panel_signals() -> dict:
-    sd = colour.SDS_ILLUMINANTS["D65"]
-    coarse = colour.SpectralDistribution(
-        {wavelength: value for wavelength, value in zip(sd.wavelengths[::10], sd.values[::10])}
-    )
-    xs = np.arange(400, 701, 5)
-    fig, ax = new_axes((4.2, 2.4), dpi=110)
-    ax.plot(sd.wavelengths, sd.values, color="#8B9099", lw=1.0, label="原始 D65")
-    for name, css in [("Linear", "#264653"), ("Sprague", "#3B82F6"), ("PCHIP", "#E76F51"), ("Cubic Spline", "#E9C46A")]:
-        try:
-            interpolated = coarse.copy().interpolate(colour.SpectralShape(400, 700, 5), method=name)
-            ax.plot(interpolated.wavelengths, interpolated.values, color=css, lw=1.0, label=name)
-        except Exception:
-            continue
-    ax.set_xlabel("波长 / nm", fontsize=7, color="#555A63")
-    ax.legend(fontsize=5.5, frameon=False)
-    ax.set_xlim(400, 700)
-
+    # FL11 有汞灯的尖锐谱线（435.8/546.1/611.6 nm），最适合暴露插值差异；
+    # 换用 D65 会失效：D65 的 5 nm 表在 10 nm 节点之间本身就是线性的，线性插值必然「零误差」。
+    truth = colour.SDS_ILLUMINANTS["FL11"].copy().align(colour.SpectralShape(400, 700, 5))
+    coarse = colour.SpectralDistribution({w: truth[w] for w in truth.wavelengths[::4]})  # 每 4 点取样 = 20 nm
+    specs = [
+        ("Linear", LinearInterpolator, "#264653"),
+        ("Sprague", SpragueInterpolator, "#3B82F6"),
+        ("PCHIP", PchipInterpolator, "#E76F51"),
+        ("Cubic Spline", CubicSplineInterpolator, "#E9C46A"),
+    ]
+    curves = [
+        series("真实 FL11（5 nm）", truth.wavelengths, truth.values, color="#8B9099", dashed=True),
+        series("20 nm 原始采样", coarse.wavelengths, coarse.values, color="#C2410C", mode="scatter"),
+    ]
     interp_rows = []
-    data = {400 + 10 * i: float(v) for i, v in enumerate(np.sin(np.linspace(0, 3, 11)) + 2)}
-    signal = colour.continuous.Signal(data)
-    for name in ["Linear", "Sprague", "PCHIP", "Cubic Spline"]:
-        try:
-            value = float(signal[415])
-            interp_rows.append([name, f"{value:.4f}"])
-        except Exception as error:
-            interp_rows.append([name, f"不可用（{type(error).__name__}）"])
+    residual_curves = []
+    for name, cls, css in specs:
+        fine = coarse.copy().interpolate(colour.SpectralShape(400, 700, 5), interpolator=cls)
+        values = np.asarray(fine.values)
+        target = np.asarray(truth.values)
+        error = np.abs(values - target)
+        curves.append(series(name, fine.wavelengths, values, color=css))
+        residual_curves.append(series(name, fine.wavelengths, values - target, color=css))
+        interp_rows.append(
+            [name, f"{error.max():.2f}", f"{error.mean():.2f}", f"{int((values < 0).sum())}"]
+        )
 
-    lut = colour.io.LUT3D.linear_table(9)
+    # 3D LUT：恒等表（linear_table）上两种插值必然完全相同，必须用非线性的合成表才能看出差异
+    grid = np.linspace(0, 1, 9)
+    matrix = np.array([[0.82, 0.18, 0.04], [0.12, 0.86, 0.09], [0.06, 0.14, 0.90]])
+    table_lut = np.empty((9, 9, 9, 3))
+    for i, a in enumerate(grid):
+        for j, b in enumerate(grid):
+            for k, c in enumerate(grid):
+                table_lut[i, j, k] = np.clip(matrix @ np.array([a, b, c]), 0, 1) ** 2.2
     probe = np.array([0.31, 0.47, 0.82])
-    lut_rows = []
-    for method in ["Trilinear", "Tetrahedral"]:
-        try:
-            lut_rows.append([method, vec(np.asarray(lut.apply(probe, interpolator=method)).ravel(), 5)])
-        except Exception as error:
-            lut_rows.append([method, f"不可用（{type(error).__name__}）"])
+    probes = np.random.default_rng(7).random((200, 3))
+    trilinear = np.array([table_interpolation_trilinear(p, table_lut) for p in probes])
+    tetrahedral = np.array([table_interpolation_tetrahedral(p, table_lut) for p in probes])
+    gap = np.abs(trilinear - tetrahedral).max(axis=1) * 255
+    lut_rows = [
+        [
+            "Trilinear",
+            vec(table_interpolation_trilinear(probe, table_lut), 4),
+            f"{gap.max():.2f}（本行 vs 下行，200 随机点最大）",
+        ],
+        [
+            "Tetrahedral",
+            vec(table_interpolation_tetrahedral(probe, table_lut), 4),
+            f"平均差 {gap.mean():.2f} /255",
+        ],
+    ]
 
     return panel(
         "signals",
@@ -335,9 +374,39 @@ def panel_signals() -> dict:
         "连续信号与插值器",
         "光谱数据是离散采样，但物理量是连续的。插值方法决定「采样点之间」长什么样——Sprague 是为等间隔光谱设计的五次插值，PCHIP 保单调，线性插值会切断峰。",
         [
-            image(fig, caption="D65 光谱：原始采样（应为 5 nm）与四种插值重建", maxw="470px"),
-            table(["插值方法", "Signal[415] 结果"], interp_rows, title="插值器在同一信号上的差异", mono=[0, 1], widths=["160px", "140px"]),
-            table(["LUT 插值", "单点结果"], lut_rows, title="3D LUT 的两种插值", mono=[0, 1], widths=["130px", "auto"]),
+            chart(
+                curves,
+                xlabel="波长 / nm",
+                ylabel="相对功率",
+                title="FL11 光谱：20 nm 采样 → 5 nm 重建",
+                caption="灰色虚线是真实 FL11（5 nm），橙点为丢掉的 20 nm 采样点，四条曲线是各插值器的重建结果。汞灯谱线被 20 nm 采样漏掉后，任何插值都补不回来——这是采样定理的问题，不是插值器的问题。",
+                height=270,
+            ),
+            chart(
+                residual_curves,
+                xlabel="波长 / nm",
+                ylabel="误差（相对功率）",
+                title="重建误差（各方法 − 真实 FL11）",
+                caption="残差最负处正是 435.8 / 546.1 / 611.6 nm 三条汞灯谱线——20 nm 采样把峰整个漏掉，任何插值都补不回来。注意区分两个量：这里是「重建值 − 真值」；表格里的负值点数是「重建值本身 < 0」，即过冲到物理上不可能的负功率。",
+                height=230,
+                zero=True,
+            ),
+            table(
+                ["插值方法", "最大绝对误差", "平均绝对误差", "负值点数"],
+                interp_rows,
+                title="重建误差（基准：真实 FL11 5 nm 采样）",
+                mono=[1, 2, 3],
+                widths=["160px", "130px", "130px", "110px"],
+                note="负值点数 = 重建后小于 0 的采样点数。Sprague 与 Cubic Spline 在尖峰两侧会过冲（Gibbs 现象），给出物理上不可能的负功率；PCHIP 保单调、Linear 不会越界，但都把峰削平了。",
+            ),
+            table(
+                ["LUT 插值", "结果 @ (0.31, 0.47, 0.82)", "与另一方法差异"],
+                lut_rows,
+                title="3D LUT 的两种插值（9³ 合成表：通道混合 + gamma 2.2）",
+                mono=[0, 1],
+                widths=["130px", "200px", "auto"],
+                note="两种插值只在表本身非线性且跨通道时才有差异；对恒等表（LUT3D.linear_table）二者结果完全一致。",
+            ),
             kv(
                 [
                     ("插值器", "LinearInterpolator / SpragueInterpolator / CubicSplineInterpolator / PchipInterpolator / KernelInterpolator / NearestNeighbourInterpolator", "algebra 子模块，共 7 种"),
