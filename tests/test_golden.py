@@ -110,3 +110,59 @@ def test_gradient_uniformity_is_finite():
     assert len(result["rows"]) == 11
     assert result["uniformity"]["mean"] is not None
     assert result["uniformity"]["ratio"] is not None and result["uniformity"]["ratio"] >= 1.0
+
+
+# --------------------------------------------------------------------------- #
+# M2（面板 09–18）的锚点：这些数值是模块实现的口径证据，不是随手写的常量
+# --------------------------------------------------------------------------- #
+def test_m2_quality_anchors():
+    """CRI 的参照光源必须接近 100；FL2 的 Ra 与 TM-30 Rf 口径不同、不能相等。"""
+
+    from colour_demo.core.quality import quality_data
+
+    body = quality_data(illuminants=["D65", "FL2"])
+    d65, fl2 = body["rows"]
+    assert d65["Ra"] == pytest.approx(100.0, abs=0.2)
+    # 实测 64.23 / 70.12：两套指标对同一支灯给出不同结论，这正是面板 12 的论点
+    assert fl2["Ra"] == pytest.approx(64.23, abs=0.05)
+    assert fl2["Rf"] == pytest.approx(70.12, abs=0.05)
+
+
+def test_m2_gamut_volume_is_deterministic():
+    """固定种子 + 关掉 multiprocessing 后，同一请求必须逐位可复现。"""
+
+    from colour_demo.core.volume import volume_data
+
+    first = volume_data(spaces=["sRGB", "Display P3"], samples=5000)
+    second = volume_data(spaces=["sRGB", "Display P3"], samples=5000)
+    assert first["rows"] == second["rows"]
+
+    ratios = {row["space"]: row["relative_to_reference"] for row in first["rows"]}
+    assert ratios["sRGB"] == pytest.approx(1.0, abs=1e-9)
+    assert ratios["Display P3"] > 1.3  # P3 的色域体积明显大于 sRGB
+
+
+def test_m2_appearance_roundtrip_is_tight():
+    """CAM16 正逆必须闭合；量级照方案 12 的 1e-6 门禁（实测 4.4e-16）。"""
+
+    from colour_demo.core.appearance import appearance_data
+
+    body = appearance_data(colours=["#3B82F6"], models=["CAM16", "ZCAM"])
+    cam16 = body["rows"][0]["results"]["CAM16"]
+    zcam = body["rows"][0]["results"]["ZCAM"]
+    assert cam16["roundtrip_error"] <= 1e-6
+    assert zcam["roundtrip_error"] <= 1e-6
+    # 域陷阱：ZCAM 走 0–1、CAM16 走 0–100，两者 J 不应相同
+    assert cam16["J"] != zcam["J"]
+
+
+def test_m2_csf_peak_is_physiological():
+    """Barten CSF 的峰值频率必须在 1–10 cpd（把 cd·m⁻² 当 Y_0 传会得到 0.5 的假峰）。"""
+
+    from colour_demo.core.phenomena import phenomena_data
+
+    body = phenomena_data(colours=["#3B82F6"], luminances=[10.0, 1000.0], points=24)
+    for row in body["csf"]["derived"]:
+        assert 1.0 <= row["peak_frequency_cpd"] <= 10.0
+    # 亮度越高，视网膜照度越大
+    assert body["csf"]["derived"][1]["retinal_illuminance_td"] > body["csf"]["derived"][0]["retinal_illuminance_td"]
