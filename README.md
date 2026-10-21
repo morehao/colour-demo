@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：早期规划（仓库骨架 + 设计说明，代码尚未实现）**
+**状态：设计阶段（28 面板方案已定稿；原型 29 页已有 22 页真实数据，面板 19–25 待补；服务端代码尚未实现）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -17,11 +17,32 @@
 
 ## 这个仓库是什么
 
-- 一个围绕 [`colour-science/colour`](https://github.com/colour-science/colour) 的学习型演示项目；
+- 一个围绕 [`colour-science/colour`](https://github.com/colour-science/colour) 的学习型演示项目，形态是一个**带 Web 界面的演示站**：左边选面板，右边看结论；
 - 目标：把色彩科学里最常用的几件事，做成可直接运行、结果能看懂的小工具；
 - 非目标：不做完整的色彩管理系统，也不替代 `colour` 本身——所有计算最终都交给它。
 
-## 规划中的演示内容
+## Web 演示
+
+> 原型可直接打开：`docs/prototype/index.html`（单文件、离线可用）。页面里的每个色值、矩阵、曲线都由 **colour-science 0.4.7** 真实计算，由 `docs/prototype/build_prototype.py` 分批生成。**原型按阶段补充**：已有数据的页面正常展示，未完成的页面以「数据待补充 + 补齐清单」占位。
+
+覆盖口径（v0.4.7 实测）：25 个子模块 / **1284 条子模块导出** / **439 个顶层名称**，映射为 826 条面板覆盖 + 238 条数据集 + 220 条内部复用，覆盖率 100%（构建脚本断言）。
+
+| 分组 | 面板 | 状态 |
+| --- | --- | --- |
+| 起点 | 00 概览（色彩链路 + 全站地图 + 分期） | 已出 |
+| 基础换算 | 01 颜色转换与换算图 · 02 色度学属性 · 03 观察者与光源 · 04 光度/明度/白度黄度 | 已出 |
+| 差异与均匀性 | 05 ΔE 全家桶（14 种） · 06 均匀空间与渐变 · 07 RGB 色彩空间图鉴（96 个） · 08 传递函数与视频信号 | 已出 |
+| 色域与光源 | 09 色度图与色域 · 10 色域体与边界 · 11 色温与黑体轨迹 · 12 色彩质量（CRI/CQS/TM-30/SSI） | 已出 |
+| 工程与数据 | 13 图像与 3D LUT | 已出 |
+| 外观与感知 | 14 色适应 · 15 外观模型（12 个） · 16 视觉模型与感知现象 · 17 对应色 · 18 色觉障碍 | 已出 |
+| 数据与算法 | 19 光谱重建 · 20 色彩校正与 ACES · 21 记号与解析 · 22 连续信号与插值器 · 23 几何与椭圆拟合 · 24 光学现象与响应动力学 · 25 图表画廊 | **待补（M3）** |
+| 元能力 | 26 能力目录（1284 条可搜索） · 27 参数化调用 · 28 API 控制台（29 端点） | 已出 |
+
+技术方案：`.dsh/docs/specs/2026-10-21-colour-web-demo-design.md`（含架构图 `colour-demo-web-architecture.svg`；构建事故与防护见 `.dsh/docs/notes/2026-10-21-build-memory-notes.md`）。技术栈 Python + FastAPI + 原生前端，图表默认由前端 SVG 从数据绘制，仅色度图/色域体/图表画廊用服务端 matplotlib，版本锁定 `colour-science==0.4.7`。
+
+## CLI 形态（备选）
+
+Web 演示是主线，同样的能力也可以做成脚本化 CLI。下表是早期规划，保留作为参考：
 
 | 能力 | 主要依赖的 `colour` API | 产出 |
 | --- | --- | --- |
@@ -87,31 +108,34 @@ colour-demo report --out out
 | NetworkX | ≥ 3.3 | `colour.convert()` 转换图 |
 | SciPy | ≥ 1.11 | `colour.plotting` 的平滑与插值 |
 
-## 目录结构（规划）
+## 目录结构
 
 ```text
 colour-demo/
-├── src/colour_demo/
-│   ├── cli.py          # argparse 子命令
-│   ├── color.py        # 解析、转换、ΔE、插值、CVD 模拟
-│   ├── plotting.py     # 四类图表的渲染
-│   └── report.py       # Markdown 报告与配图
-├── tests/              # pytest：已知色值、ΔE 参考对、往返转换
-├── docs/images/        # README 与报告用图
-├── .github/workflows/  # CI：ruff + pytest
-├── LICENSE             # MIT
+├── docs/
+│   └── prototype/          # 已产出：静态原型 + 分阶段构建
+│       ├── index.html      #   单文件原型（29 页，内联数据）
+│       ├── index.template.html
+│       ├── build_prototype.py   # --batch 1|2|3 / --merge
+│       └── gen/            #   面板定义、块类型、能力目录映射、占位清单
+├── src/colour_demo/        # 待实现：FastAPI 应用
+│   ├── main.py             #   应用装配：路由、静态、异常、版本断言
+│   ├── api/                #   pydantic 契约与 /api/v1 端点
+│   ├── core/               #   一个面板一个模块（纯函数）
+│   └── web/                #   静态资源：index.html / app.js / styles.css
+├── tests/                  # 待实现：黄金值、Sharma ΔE 参考对、接口契约
+├── LICENSE                 # MIT
 └── README.md
 ```
 
 ## 路线图
 
-- [ ] `convert`：色彩空间转换表与 `--json`
-- [ ] `gamut`：CIE 1931 色度图 + sRGB / P3 / BT.2020 色域叠加
-- [ ] `delta-e`：ΔE 矩阵与热力图
-- [ ] `gradient`：sRGB / 线性 / Oklab 插值对比
-- [ ] `cvd`：Machado 2009 色觉障碍模拟
-- [ ] `report`：一键生成图表与报告
-- [ ] 测试与 CI（已知色值、Sharma ΔE 参考数据、往返转换）
+- [x] 技术方案（28 面板全量覆盖、API 契约、覆盖自检、分阶段交付、性能与验收）
+- [x] 原型骨架 + 22 页真实数据（00–18、26–28），7 页占位待补（19–25）
+- [ ] 补齐原型面板 19–25（M3，逐面板构建，单面板 < 300 MB）
+- [ ] M1：FastAPI 骨架 + 面板 01–08 端点 + 前端 + 黄金值测试
+- [ ] M2：色域/色温/质量/LUT/适应/外观/感知/CVD 端点（面板 09–18）
+- [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
 
 ## 参考资料
 

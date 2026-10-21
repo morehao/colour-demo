@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>colour-demo · colour-science 0.4.7 全能力演示（原型）</title>
+<style>
+  :root{
+    --bg:#F6F6F3; --card:#FFFFFF; --ink:#15161A; --ink-2:#555A63; --ink-3:#8B9099;
+    --line:#E5E5DF; --line-2:#D3D3CB; --accent:#3B82F6; --accent-ink:#1D4ED8;
+    --warm:#E76F51; --green:#2A9D8F; --gold:#E9C46A;
+    --radius:12px; --radius-sm:8px;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    --shadow:0 1px 2px rgba(20,22,26,.04),0 10px 28px -14px rgba(20,22,26,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;font-size:inherit;cursor:pointer}
+  h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+  p{margin:0}
+  code,.mono{font-family:var(--mono);font-size:12.5px}
+
+  /* shell */
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;padding:11px 20px;
+    background:rgba(246,246,243,.9);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand-mark{width:26px;height:26px;border-radius:8px;
+    background:conic-gradient(from 210deg,#264653,#2A9D8F,#E9C46A,#F4A261,#E76F51,#264653);
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+  .brand-name{font-weight:650;letter-spacing:-.02em}
+  .brand-sub{color:var(--ink-3);font-size:12px;margin-left:2px}
+  .spacer{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;
+    border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);font-size:12px;white-space:nowrap}
+  .chip b{font-weight:600}
+  .chip--accent{border-color:#C7DBFB;background:#EEF4FE;color:var(--accent-ink)}
+  .chip--warm{border-color:#F3D3C9;background:#FDF1ED;color:#A63F24}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.75}
+
+  .app{display:grid;grid-template-columns:250px minmax(0,1fr);align-items:start}
+  .side{position:sticky;top:57px;height:calc(100vh - 57px);overflow:auto;padding:16px 10px 40px;border-right:1px solid var(--line)}
+  .side-group{margin-bottom:14px}
+  .side-label{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:0 10px 5px}
+  .nav-btn{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 10px;border:0;border-radius:var(--radius-sm);
+    background:transparent;color:var(--ink-2);font-size:13px}
+  .nav-btn:hover{background:#EDEDE8;color:var(--ink)}
+  .nav-btn[aria-current="page"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow);font-weight:600}
+  .nav-btn[aria-current="page"] .nav-index{color:var(--accent)}
+  .nav-index{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:20px;flex:none}
+  .nav-phase{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+  .nav-pending{width:5px;height:5px;border-radius:50%;border:1px solid #C9A227;margin-left:4px;flex:none}
+  .side-foot{padding:12px 10px 0;color:var(--ink-3);font-size:11px;line-height:1.7;border-top:1px solid var(--line);margin-top:6px}
+
+  main{padding:24px 32px 90px;max-width:1180px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .panel-head h1{font-size:25px;letter-spacing:-.025em}
+  .lead{color:var(--ink-2);max-width:76ch;margin-top:8px}
+  .panel-head{margin-bottom:18px}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+  .card-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:#FCFCFA}
+  .card-head h2{font-size:13.5px}
+  .card-head .hint{color:var(--ink-3);font-size:12px}
+  .card-body{padding:14px 16px}
+  .card-foot{padding:9px 16px;border-top:1px solid var(--line);background:#FCFCFA;color:var(--ink-3);font-size:12px}
+
+  .controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px;padding:12px 16px;border-bottom:1px solid var(--line);background:#FBFAF7}
+  .field{display:grid;gap:4px;min-width:0}
+  .field>span{font-size:11px;color:var(--ink-3)}
+  input[type=text],select{height:31px;padding:0 9px;border:1px solid var(--line-2);border-radius:7px;background:#fff;color:var(--ink);
+    font-family:var(--mono);font-size:12.5px;width:100%;min-width:0}
+  input[type=text]:focus,select:focus{outline:2px solid #C7DBFB;outline-offset:1px;border-color:var(--accent)}
+  .color-field{display:flex;gap:8px;align-items:center}
+  input[type=color]{width:38px;height:31px;padding:2px;border:1px solid var(--line-2);border-radius:7px;background:#fff;flex:none}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .ctrl-note{padding:8px 16px;border-bottom:1px solid var(--line);background:#FBFAF7;color:var(--ink-3);font-size:11.5px}
+
+  /* generic */
+  .kv{width:100%;border-collapse:collapse}
+  .kv td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  .kv tr:last-child td{border-bottom:0}
+  .kv td.k{color:var(--ink-2);white-space:nowrap;padding-right:14px;width:34%}
+  .kv td.v{font-family:var(--mono);font-size:12.5px;word-break:break-word}
+  .kv td.n{color:var(--ink-3);font-size:12px;padding-left:14px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFCFA}
+  .stat b{display:block;font-size:17px;font-family:var(--mono);letter-spacing:-.02em}
+  .stat span{font-size:11.5px;color:var(--ink-3)}
+  .tag{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:5px;font-size:11px;
+    background:#F1F1EC;color:var(--ink-2);border:1px solid var(--line);white-space:nowrap}
+  .tag--m1{background:#EEF4FE;border-color:#C7DBFB;color:#1D4ED8}
+  .tag--m2{background:#E9F6F3;border-color:#C6E7E0;color:#1B6B5F}
+  .tag--m3{background:#FBF1E7;border-color:#EEDBC6;color:#8A5A24}
+  .tag--m4{background:#F2EDFB;border-color:#DCD0F5;color:#5B3E9B}
+  .tag--pending{background:#FBF7EA;border-color:#EDE2C4;color:#6B5620}
+  .muted{color:var(--ink-3)}
+  .small{font-size:12px}
+  .table-wrap{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:9px}
+  table.data{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.data th{position:sticky;top:0;z-index:1;background:#FCFCFA;text-align:left;font-weight:500;color:var(--ink-3);
+    font-size:11.5px;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.data td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
+  table.data tr:hover td{background:#FCFCFA}
+  table.data td.mono{font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .table-note{padding:8px 2px 0;color:var(--ink-3);font-size:11.5px}
+
+  /* matrix */
+  .matrix-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .matrix-head i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.12);display:block}
+  table.matrix{border-collapse:separate;border-spacing:3px;font-family:var(--mono);font-size:12px}
+  table.matrix th{font-family:var(--sans);font-weight:500;font-size:11px;color:var(--ink-3);padding:2px 6px;text-align:center}
+  table.matrix td{width:58px;height:34px;text-align:center;border-radius:6px;border:1px solid rgba(0,0,0,.05)}
+  table.matrix td.diag{background:repeating-linear-gradient(45deg,#F4F4F0,#F4F4F0 4px,#EDEDE7 4px,#EDEDE7 8px);color:var(--ink-3)}
+
+  /* swatches */
+  .sw-grid{display:grid;gap:8px}
+  .sw{display:grid;gap:4px}
+  .sw-color{height:44px;border-radius:7px;border:1px solid rgba(0,0,0,.08)}
+  .sw-hex{font-family:var(--mono);font-size:10.5px;color:var(--ink-2);text-align:center}
+  .sw-sub{font-size:10px;color:var(--ink-3);text-align:center}
+
+  /* strips */
+  .strip-block{display:grid;gap:7px;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .strip-block:first-child{padding-top:0}
+  .strip-block:last-child{border-bottom:0;padding-bottom:0}
+  .strip-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .strip-head h3{font-size:13px}
+  .strip-head .note{color:var(--ink-3);font-size:11.5px}
+  .strip-head .stats{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+  .bar{height:24px;border-radius:7px;border:1px solid rgba(0,0,0,.07)}
+  .steps{display:grid;gap:3px}
+  .step{height:20px;border-radius:3px;border:1px solid rgba(0,0,0,.05)}
+
+  /* chart */
+  .chart-wrap{display:block}
+  .chart{width:100%;height:auto;display:block;max-width:100%}
+  .chart text{font-family:var(--mono);font-size:9px;fill:var(--ink-3)}
+  .chart .legend{font-family:var(--sans);font-size:10px}
+  .chart-caption{color:var(--ink-3);font-size:11.5px}
+  .fig{margin:0;display:grid;gap:6px;justify-items:center}
+  .fig img{max-width:100%;height:auto;display:block}
+  .fig figcaption{color:var(--ink-3);font-size:11.5px;text-align:center}
+
+  /* callouts */
+  .note-box{display:flex;gap:9px;padding:11px 13px;border-radius:9px;font-size:12px;line-height:1.65}
+  .note-box .b{font-weight:600;flex:none}
+  .note-info{background:#F1F6FE;border:1px solid #D3E3FA;color:#1B3A6B}
+  .note-warn{background:#FBF7EA;border:1px solid #EDE2C4;color:#6B5620}
+
+  /* json */
+  .code{position:relative;background:#1B1D21;color:#E6E6E3;border-radius:9px}
+  .code pre{margin:0;padding:12px 14px;overflow:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;max-height:340px}
+  .code .copy{position:absolute;top:8px;right:8px;border:1px solid #3A3D44;background:#262A30;color:#CFD2D6;border-radius:6px;font-size:11px;padding:2px 8px}
+  .k-str{color:#93D6A0}.k-num{color:#FFC46B}.k-key{color:#8CB8FF}
+
+  /* chain + cards */
+  .chain{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .chain-node{position:relative;padding:11px;border-radius:10px;border:1px solid var(--line);background:#FCFCFA}
+  .chain-node strong{display:block;font-size:12.5px;margin-bottom:3px}
+  .chain-node p{font-size:11px;color:var(--ink-3);line-height:1.5}
+  .chain-bar{height:3px;border-radius:2px;margin-bottom:8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .mini{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFCFA;display:grid;gap:4px}
+  .mini h3{font-size:12.5px}
+  .mini p{font-size:11.5px;color:var(--ink-2);line-height:1.5}
+  .mini code{color:var(--ink-3);font-size:11px}
+
+  footer.page-foot{margin-top:22px;color:var(--ink-3);font-size:12px;line-height:1.8;border-top:1px solid var(--line);padding-top:12px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);background:#1B1D21;color:#fff;
+    padding:7px 13px;border-radius:8px;font-size:12.5px;opacity:0;pointer-events:none;transition:.18s;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%)}
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    main{padding:18px}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div><span class="brand-name">colour-demo</span><span class="brand-sub">全能力演示</span></div>
+  </div>
+  <div class="spacer"></div>
+  <span class="chip chip--accent"><span class="dot"></span>colour-science <b id="lib-version">0.4.7</b></span>
+  <span class="chip" id="chip-coverage">—</span>
+  <span class="chip" id="chip-progress">—</span>
+  <span class="chip chip--warm">原型快照 · 静态页</span>
+</header>
+<div class="app">
+  <aside class="side" id="side"></aside>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast">已复制</div>
+
+<script>
+const DATA = /*__DATA__*/;
+
+/* ---------------- helpers ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (v) => {
+  const n = Number(v);
+  if (!isFinite(n)) return String(v);
+  const a = Math.abs(n);
+  if (a === 0) return "0";
+  if (a >= 1000) return n.toFixed(0);
+  if (a >= 100) return n.toFixed(a % 1 === 0 ? 0 : 1);
+  if (a >= 10) return n.toFixed(a % 1 === 0 ? 0 : 1);
+  if (a >= 1) return n.toFixed(2);
+  if (a >= 0.01) return n.toFixed(3);
+  return n.toExponential(1);
+};
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 1400);
+}
+function copyText(text) {
+  const fallback = () => {
+    const area = document.createElement("textarea");
+    area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+    document.body.appendChild(area); area.select();
+    try { document.execCommand("copy"); toast("已复制"); } catch (e) { toast("复制失败"); }
+    document.body.removeChild(area);
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => toast("已复制"), fallback);
+  else fallback();
+}
+function highlight(text) {
+  return esc(text).replace(/(&quot;(?:\\.|[^&])*?&quot;)(\s*:)?|\b(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\b|\b(true|false|null)\b/g,
+    (m, str, colon, num, lit) => {
+      if (str) return colon ? `<span class="k-key">${str}</span>${colon}` : `<span class="k-str">${str}</span>`;
+      if (num) return `<span class="k-num">${num}</span>`;
+      if (lit) return `<span class="k-num">${lit}</span>`;
+      return m;
+    });
+}
+const PHASE_CLASS = { M1: "tag--m1", M2: "tag--m2", M3: "tag--m3", M4: "tag--m4", M0: "tag--m1" };
+
+/* ---------------- chart ---------------- */
+function renderChart(b) {
+  const W = 880, H = b.height || 260;
+  const pad = { l: 46, r: 14, t: 12, b: 30 };
+  const series = b.series.filter((s) => s.points.length);
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  series.forEach((s) => s.points.forEach(([x, y]) => {
+    if (isFinite(x)) { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); }
+    if (isFinite(y)) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
+  }));
+  if (!isFinite(xmin)) return "";
+  if (b.zero) ymin = Math.min(0, ymin);
+  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  const sx = (x) => pad.l + ((x - xmin) / (xmax - xmin || 1)) * (W - pad.l - pad.r);
+  const sy = (y) => H - pad.b - ((y - ymin) / (ymax - ymin || 1)) * (H - pad.t - pad.b);
+
+  const ticksY = 5, ticksX = 6;
+  let grid = "", axis = "";
+  for (let i = 0; i <= ticksY; i++) {
+    const value = ymin + ((ymax - ymin) * i) / ticksY;
+    const y = sy(value);
+    grid += `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="#EFEFEA" stroke-width="1"/>`;
+    axis += `<text x="${pad.l - 6}" y="${y + 3}" text-anchor="end">${fmt(value)}</text>`;
+  }
+  for (let i = 0; i <= ticksX; i++) {
+    const value = xmin + ((xmax - xmin) * i) / ticksX;
+    const x = sx(value);
+    axis += `<line x1="${x}" y1="${H - pad.b}" x2="${x}" y2="${H - pad.b + 3}" stroke="#D3D3CB" stroke-width="1"/>`;
+    axis += `<text x="${x}" y="${H - pad.b + 14}" text-anchor="middle">${fmt(value)}</text>`;
+  }
+  const colors = ["#2A9D8F", "#3B82F6", "#E76F51", "#E9C46A", "#8E44AD", "#264653", "#F4A261", "#111827"];
+  let paths = "";
+  series.forEach((s, i) => {
+    const color = s.color || colors[i % colors.length];
+    if (s.mode === "scatter") {
+      paths += s.points.map(([x, y]) => `<circle cx="${sx(x)}" cy="${sy(y)}" r="2.2" fill="${color}"/>`).join("");
+    } else if (s.mode === "bar") {
+      const w = Math.max(2, (W - pad.l - pad.r) / s.points.length * 0.7);
+      paths += s.points.map(([x, y]) => {
+        const x0 = sx(x) - w / 2;
+        const y0 = sy(Math.max(0, y));
+        return `<rect x="${x0}" y="${y0}" width="${w}" height="${Math.abs(sy(y) - sy(0))}" fill="${color}" opacity="0.85"/>`;
+      }).join("");
+    } else {
+      const d = s.points.map(([x, y], k) => `${k === 0 ? "M" : "L"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
+      paths += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" ${s.dashed ? 'stroke-dasharray="4 3"' : ""} stroke-linejoin="round"/>`;
+    }
+  });
+  const legend = series
+    .filter((s) => s.mode !== "scatter" || series.length < 9)
+    .slice(0, 8)
+    .map((s, i) => {
+      const color = s.color || colors[series.indexOf(s) % colors.length];
+      return `<g><rect x="0" y="0" width="10" height="3" rx="1.5" fill="${color}" transform="translate(${pad.l + i * 108},12)"/>
+        <text class="legend" x="${pad.l + i * 108 + 14}" y="16" fill="#555A63">${esc(s.name)}</text></g>`;
+    })
+    .join("");
+
+  return `<div class="chart-wrap">
+    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(b.title || b.caption || "chart")}">
+      ${grid}${paths}${axis}
+      <text x="${W - pad.r}" y="${H - 4}" text-anchor="end">${esc(b.xlabel || "")}</text>
+      ${legend}
+    </svg>
+    ${b.caption ? `<div class="chart-caption">${esc(b.caption)}</div>` : ""}
+  </div>`;
+}
+
+/* ---------------- blocks ---------------- */
+function blockTitle(b) {
+  return b.title ? `<div class="card-head"><h2>${esc(b.title)}</h2></div>` : "";
+}
+
+function renderBlock(b) {
+  switch (b.type) {
+    case "kv":
+      return `<div class="card">${blockTitle(b)}<div class="card-body"><table class="kv">${b.rows
+        .map(([k, v, n]) => `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td><td class="n">${esc(n || "")}</td></tr>`)
+        .join("")}</table></div></div>`;
+    case "stats":
+      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="stats">${b.items
+        .map(([v, k, n]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}${n ? " · " + esc(n) : ""}</span></div>`)
+        .join("")}</div></div></div>`;
+    case "matrix": {
+      const max = Math.max(...b.values.flat().filter((v, i) => Number.isFinite(v)));
+      const head = `<tr><th></th>${b.colors.map((_, i) => `<th>${i + 1}</th>`).join("")}</tr>`;
+      const body = b.values
+        .map((row, i) => `<tr><th>${i + 1}</th>${row
+          .map((v, j) => {
+            if (i === j) return `<td class="diag">—</td>`;
+            const t = Math.min(1, v / (max || 1));
+            return `<td style="background:rgba(59,130,246,${(0.06 + 0.5 * t).toFixed(3)});color:${t > 0.62 ? "#0B2A5B" : "#15161A"}">${v.toFixed(1)}</td>`;
+          })
+          .join("")}</tr>`)
+        .join("");
+      return `<div class="card">${blockTitle(b)}<div class="card-body">
+        <div class="matrix-head">${b.colors.map((c, i) => `<span class="tag" style="gap:5px"><i style="background:${c}"></i>${i + 1}. ${c}</span>`).join("")}</div>
+        <table class="matrix">${head}${body}</table>
+        ${b.caption ? `<div class="table-note">${esc(b.caption)}</div>` : ""}
+      </div></div>`;
+    }
+    case "swatches":
+      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="sw-grid" style="grid-template-columns:repeat(${b.cols},minmax(0,1fr))">${b.items
+        .map((it) => `<div class="sw"><div class="sw-color" style="background:${it.hex}"></div><div class="sw-hex">${esc(it.label)}</div>${it.sub ? `<div class="sw-sub">${esc(it.sub)}</div>` : ""}</div>`)
+        .join("")}</div></div></div>`;
+    case "strips":
+      return `<div class="card">${blockTitle(b)}<div class="card-body">${b.items
+        .map((s) => {
+          const grad = `linear-gradient(90deg, ${s.colors.join(", ")})`;
+          const cells = s.colors.map((c) => `<div class="step" style="background:${c}" title="${c}"></div>`).join("");
+          return `<div class="strip-block">
+            <div class="strip-head"><h3>${esc(s.label)}</h3><span class="note">${esc(s.note)}</span>
+              <div class="stats">${s.stats.map(([k, v]) => `<span class="tag">${esc(k)} ${esc(v)}</span>`).join("")}</div></div>
+            <div class="bar" style="background:${grad}"></div>
+            <div class="steps" style="grid-template-columns:repeat(${s.colors.length},minmax(0,1fr))">${cells}</div>
+          </div>`;
+        })
+        .join("")}${b.caption ? `<div class="table-note">${esc(b.caption)}</div>` : ""}</div></div>`;
+    case "table": {
+      const filterable = b.rows.length > 40;
+      return `<div class="card">${blockTitle(b)}<div class="card-body">
+        <div class="table-wrap"><table class="data" ${filterable ? 'data-filterable="1"' : ""}>
+          <thead><tr>${b.head.map((h, i) => `<th${b.widths ? ` style="width:${b.widths[i] || "auto"}"` : ""}>${esc(h)}</th>`).join("")}</tr></thead>
+          <tbody>${b.rows.map((row) => `<tr>${row.map((cell, i) => `<td class="${(b.mono || []).includes(i) ? "mono" : ""}">${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table></div>
+        ${b.note ? `<div class="table-note">${esc(b.note)}</div>` : ""}
+      </div></div>`;
+    }
+    case "chart":
+      return `<div class="card">${blockTitle(b)}<div class="card-body">${renderChart(b)}</div></div>`;
+    case "image":
+      return `<div class="card"><div class="card-body"><figure class="fig"><img src="${b.src}" alt="${esc(b.alt)}" style="max-width:${b.maxw || "520px"}">${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ""}</figure></div></div>`;
+    case "note":
+      return `<div class="note-box ${b.tone === "warn" ? "note-warn" : "note-info"}"><span class="b">${esc(b.title || (b.tone === "warn" ? "注意" : "说明"))}</span><span>${esc(b.text)}</span></div>`;
+    case "json":
+      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="code"><button class="copy" data-copy>复制</button><pre>${highlight(b.code)}</pre></div></div></div>`;
+    case "cards":
+      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="cards">${b.items
+        .map((it) => `<div class="mini"><h3>${esc(it.title)}</h3><p>${esc(it.text)}</p><code>${esc(it.foot)}</code></div>`)
+        .join("")}</div></div></div>`;
+    case "chain":
+      return `<div class="card"><div class="card-body"><div class="chain">${b.nodes
+        .map(([name, color, desc]) => `<div class="chain-node"><div class="chain-bar" style="background:${color}"></div><strong>${esc(name)}</strong><p>${esc(desc)}</p></div>`)
+        .join("")}</div></div></div>`;
+    default:
+      return "";
+  }
+}
+
+/* ---------------- panels ---------------- */
+function renderControls(panel) {
+  if (!panel.controls.length) return "";
+  return `<div class="controls">${panel.controls
+    .map((c) => {
+      if (c.kind === "color") {
+        return `<div class="field"><span>${esc(c.label)}</span><div class="color-field"><input type="color" value="${esc(c.value)}" disabled><input type="text" value="${esc(c.value)}" disabled></div></div>`;
+      }
+      if (c.kind === "select") {
+        return `<div class="field"><span>${esc(c.label)}</span><select disabled>${c.options.map((o) => `<option${o === c.value ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
+      }
+      if (c.kind === "range") {
+        return `<div class="field"><span>${esc(c.label)}</span><input type="range" min="0" max="100" step="5" value="${esc(c.value)}" disabled></div>`;
+      }
+      return `<div class="field"><span>${esc(c.label)}</span><input type="text" value="${esc(c.value)}" disabled></div>`;
+    })
+    .join("")}</div>
+    <div class="ctrl-note">原型为静态快照：导航与能力目录搜索可用，其余控件为样式占位（正式版接 API 后启用）。</div>`;
+}
+
+function renderPanel(panel) {
+  $("#main").innerHTML = `
+    <div class="panel-head">
+      <div class="eyebrow">Panel ${panel.no} · ${esc(panel.group)}
+        <span class="tag ${PHASE_CLASS[panel.phase] || ""}" style="margin-left:8px">${esc(panel.phase)}</span>
+        ${panel.pending ? '<span class="tag tag--pending" style="margin-left:6px">数据待补充</span>' : ""}</div>
+      <h1>${esc(panel.title)}</h1>
+      <p class="lead">${panel.lead.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>
+    </div>
+    <div class="card">${renderControls(panel)}</div>
+    ${panel.blocks.map(renderBlock).join("")}
+    <footer class="page-foot">${panel.footer.replace(/`([^`]+)`/g, "<code>$1</code>")}<br>
+      本页数据由 <code>colour-science ${DATA.lib.version}</code> 于构建时计算；APIs：${panel.apis.map((a) => `<code>${esc(a)}</code>`).join(" · ")}</footer>`;
+  wirePanel(panel);
+}
+
+/* 能力目录：真实可用的搜索与状态过滤 */
+function wirePanel(panel) {
+  if (panel.id !== "catalog") return;
+  const search = $(".controls input[type=text]");
+  const status = $(".controls select");
+  const rows = Array.from(document.querySelectorAll('table.data[data-filterable] tbody tr'));
+  const apply = () => {
+    const q = (search?.value || "").toLowerCase();
+    const st = status?.value || "全部";
+    rows.forEach((tr) => {
+      const text = tr.textContent.toLowerCase();
+      const cells = tr.children;
+      const rowStatus = cells[cells.length - 1].textContent.trim();
+      tr.style.display = (!q || text.includes(q)) && (st === "全部" || rowStatus === st) ? "" : "none";
+    });
+  };
+  if (search) { search.disabled = false; search.addEventListener("input", apply); }
+  if (status) { status.disabled = false; status.addEventListener("change", apply); }
+  const note = document.querySelector(".ctrl-note");
+  if (note) note.textContent = "本页控件在本原型中真实可用：输入关键字过滤名称，或按状态（面板 / 数据集 / 内部）筛选。";
+}
+
+/* ---------------- nav ---------------- */
+function buildNav() {
+  const groups = DATA.groups;
+  $("#side").innerHTML = groups
+    .map((g) => `<div class="side-group"><div class="side-label">${esc(g)}</div>${DATA.panels
+      .filter((p) => p.group === g)
+      .map((p) => `<button class="nav-btn" data-id="${p.id}"><span class="nav-index">${p.no}</span>${esc(p.title)}${p.pending ? '<span class="nav-pending" title="数据待补充"></span>' : ""}<span class="nav-phase">${esc(p.phase)}</span></button>`)
+      .join("")}</div>`)
+    .join("") + `<div class="side-foot">全部 ${DATA.catalog.total} 个公开名称均已归属：面板 ${DATA.catalog.counts["面板"]} · 数据集 ${DATA.catalog.counts["数据集"]} · 内部 ${DATA.catalog.counts["内部"]}。</div>`;
+  document.querySelectorAll(".nav-btn").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      location.hash = btn.dataset.id;
+    })
+  );
+}
+
+function activate(id) {
+  const panel = DATA.panels.find((p) => p.id === id) || DATA.panels[0];
+  document.querySelectorAll(".nav-btn").forEach((b) => {
+    if (b.dataset.id === panel.id) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
+  renderPanel(panel);
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-copy]");
+  if (!btn) return;
+  copyText(btn.parentElement.querySelector("pre").textContent);
+});
+
+buildNav();
+$("#lib-version").textContent = DATA.lib.version;
+$("#chip-coverage").innerHTML = `${DATA.catalog.total} 条导出全部归属 · ${DATA.catalog.coverage.toFixed(1)}%`;
+$("#chip-progress").textContent = `面板数据 ${DATA.stats.ready}/${DATA.panels.length} 已出`;
+window.addEventListener("hashchange", () => activate(location.hash.slice(1)));
+activate(location.hash.slice(1) || DATA.panels[0].id);
+</script>
+</body>
+</html>
