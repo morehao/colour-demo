@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：M1 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，9 个端点 + 28 个测试全绿）**
+**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 覆盖，20 个端点 + 54 个测试全绿）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -53,7 +53,7 @@ Web 演示是主线，同样的能力也可以做成脚本化 CLI。下表是早
 | 色觉障碍模拟 | `colour.blindness.matrix_cvd_Machado2009` | 红色盲 / 绿色盲 / 蓝色盲下的同一组调色板 |
 | 一键报告 | 以上组合 | `out/report.md` + 全部配图 |
 
-## 服务端（M1，可跑）
+## 服务端（M2，可跑）
 
 ```bash
 # 安装（colour-science 版本被锁死，黄金值测试依赖它）
@@ -68,22 +68,37 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 .venv/bin/python -m pytest
 ```
 
-M1 已实现 9 个端点（面板 00–08 的服务端子集）：
+已实现 **20 个端点**，覆盖面板 00–18（面板 19–25 的服务端是 M3）：
 
-| 端点 | 说明 | 实测 p95（本机热态） |
+| 端点 | 说明 | 面板 |
 | --- | --- | --- |
-| `GET /api/v1/health` | 版本自检（`colour.__version__` 断言 0.4.7） | < 1 ms |
-| `GET /api/v1/meta` | 版本、可选方法枚举、计数、端点清单 | < 1 ms |
-| `GET /api/v1/spaces` | 96 个 RGB 色彩空间（基色/白点/传递函数） | 1.2 ms |
-| `POST /api/v1/convert` | 换算到 14 个核心空间 + 换算链路 | 1.3 ms |
-| `POST /api/v1/chroma` | xy / uv / u′v′、主波长、激发与色度纯度 | 2.6 ms |
-| `POST /api/v1/spectral` | SPD 采样、观察者摘要、黑体光谱 | 3 ms |
-| `POST /api/v1/photometry` | 明度（7 种）/ 亮度 / 白度 / 黄度 | 1.7 ms |
-| `POST /api/v1/delta-e` | 14 种 ΔE 的对称矩阵 + 最近/最远一对 | 2.1 ms |
-| `POST /api/v1/gradient` | N 步插值 + 步长 ΔE 均匀度 | 2.0 ms（101 步） |
+| `GET /api/v1/health` | 版本自检（`colour.__version__` 断言 0.4.7） | 28 |
+| `GET /api/v1/meta` | 版本、全站方法枚举、计数、端点清单 | 00 / 26 |
+| `GET /api/v1/spaces` | 96 个 RGB 色彩空间（基色 / 白点 / 传递函数） | 07 |
+| `POST /api/v1/convert` | 换算到 14 个核心空间 + 换算链路 | 01 |
+| `POST /api/v1/chroma` | xy / uv / u′v′、主波长、激发与色度纯度 | 02 |
+| `POST /api/v1/spectral` | SPD 采样、观察者摘要、黑体光谱 | 03 |
+| `POST /api/v1/photometry` | 明度（7 种）/ 亮度 / 白度 / 黄度 | 04 |
+| `POST /api/v1/delta-e` | 14 种 ΔE 的对称矩阵 + 最近 / 最远一对 | 05 |
+| `POST /api/v1/gradient` | N 步插值 + 步长 ΔE 均匀度 | 06 |
+| `GET /api/v1/chromaticity` | 色域三角形面积、样本点 xy / u′v′、是否在色域内 | 09 |
+| `GET /api/v1/chromaticity.svg` | 色度图（唯一出图的端点，ETag 命中回 304） | 09 |
+| `POST /api/v1/volume` | MonteCarlo 色域体积 + MacAdam / Pointer / 可见光谱判据 | 10 |
+| `POST /api/v1/temperature` | xy 派 / uv 派色温正反解 + mired + 普朗克轨迹 | 11 |
+| `POST /api/v1/quality` | CRI Ra（1995/2024）、CQS、TM-30 Rf/Rg、SSI | 12 |
+| `POST /api/v1/lut` | 17³ LUT 的三线性 / 四面体插值对比 + 灰阶带 | 13 |
+| `POST /api/v1/adapt` | 7 种色适应方法 + vK20 + 13 个 CAT 矩阵 | 14 |
+| `POST /api/v1/appearance` | 12 个外观模型的 J/C/h/M/H + 往返误差 | 15 |
+| `POST /api/v1/phenomena-vision` | H-K 效应（VCC/VAC）+ Barten 1999 CSF | 16 |
+| `POST /api/v1/corresponding` | Breneman 8 组实验 × 5 个模型的 u′v′ 偏差 | 17 |
+| `POST /api/v1/cvd` | Machado 2009 三类锥体 × 连续严重度 + 可区分性指标 | 18 |
 
 错误一律 `{"detail": {"type": ..., "message": ...}}`（方案 6.3）：坏色值指出「第几个」、
-超上限给「最多 12 个」、未知方法列出可选枚举；500 只返回 `trace_id`，不带堆栈。
+超上限给「最多 12 个」、未知方法列出可选枚举、请求体超 32 KB 直接 413、500 只返回 `trace_id`。
+每条响应带 `X-Compute-Ms`。
+
+已知缺口：面板 08（传递函数与视频信号，`POST /api/v1/transfer`）还没有端点——它在方案里属 M2，
+但本轮按「面板 09–18 + 10 模块」的范围实现，留给下一轮补齐。
 
 ## 示例：现在就能跑的 `colour` 代码
 
@@ -167,8 +182,9 @@ colour-demo/
 - [x] 技术方案（28 面板全量覆盖、API 契约、覆盖自检、分阶段交付、性能与验收）
 - [x] 原型骨架 + 29 页真实数据（00–28，含 7 个前端 SVG chart 块）
 - [x] 补齐原型面板 19–25（M3，`--panel` 逐面板独立进程构建，单面板峰值 126–160 MB）
-- [x] M1：FastAPI 骨架 + 面板 00–08 端点（9 个）+ 黄金值测试（28 项全绿）
-- [ ] M2：色域/色温/质量/LUT/适应/外观/感知/CVD 端点（面板 09–18）
+- [x] M1：FastAPI 骨架 + 面板 00–07 端点（9 个）+ 黄金值测试（28 项全绿）
+- [x] M2：色域/色温/质量/LUT/适应/外观/感知/对应色/CVD 端点（面板 09–18，11 个端点，54 项全绿）
+- [ ] M2 缺口：面板 08 传递函数（`POST /api/v1/transfer`）
 - [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
 
 ## 参考资料
