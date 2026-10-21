@@ -428,40 +428,91 @@ def panel_signals() -> dict:
 # --------------------------------------------------------------------------- #
 def panel_geometry() -> dict:
     data = np.asarray(colour.models.DATA_MACADAM_1942_ELLIPSES, dtype=float)
-    row = data[10]
-    cx, cy, a10, b10, theta10 = row[0], row[1], row[2], row[3], row[4]
+    row = data[10]  # 列序：u, v, a, b, theta_a, a_sd, b_sd, theta_sd
+    cx, cy, a_raw, b_raw, theta_raw = row[0], row[1], row[2], row[3], row[4]
     angles = np.linspace(0, 2 * np.pi, 60)
-    rotation = np.radians(theta10)
-    ex = cx + (a10 / 1000) * np.cos(angles) * np.cos(rotation) - (b10 / 1000) * np.sin(angles) * np.sin(rotation)
-    ey = cy + (a10 / 1000) * np.cos(angles) * np.sin(rotation) + (b10 / 1000) * np.sin(angles) * np.cos(rotation)
+    rotation = np.radians(theta_raw)
+    ex = cx + (a_raw / 1000) * np.cos(angles) * np.cos(rotation) - (b_raw / 1000) * np.sin(angles) * np.sin(rotation)
+    ey = cy + (a_raw / 1000) * np.cos(angles) * np.sin(rotation) + (b_raw / 1000) * np.sin(angles) * np.cos(rotation)
     points = np.column_stack([ex, ey])
-    try:
-        coefficients = np.asarray(colour.geometry.ellipse_fitting(points), dtype=float)
-    except Exception:
-        coefficients = None
 
-    fig, ax = new_axes((3.4, 2.6), dpi=110)
-    ax.scatter(points[:, 0], points[:, 1], s=5, color="#8B9099", label="MacAdam 椭圆采样点")
-    ax.plot(ex, ey, color="#E76F51", lw=1.0, label="原始椭圆")
-    ax.set_aspect("equal")
-    ax.legend(fontsize=5.5, frameon=False)
-    ax.set_xlabel("x", fontsize=7, color="#555A63")
-    ax.set_ylabel("y", fontsize=7, color="#555A63")
+    # ellipse_fitting 内部走广义特征值分解，返回 dtype 是 complex128（虚部恒为 0），必须取 .real，
+    # 否则会抛 numpy ComplexWarning。
+    coefficients = np.asarray(colour.geometry.ellipse_fitting(points)).real
+    x0, y0, fit_a, fit_b, fit_theta = np.asarray(
+        colour.geometry.ellipse_coefficients_canonical_form(coefficients)
+    ).real
 
-    primitives = []
-    for name in ["primitive_grid", "primitive_cube", "primitive_sphere"]:
-        try:
-            vertices = getattr(colour.geometry, name)((4, 4))
-            primitives.append([name, str(np.asarray(vertices).shape)])
-        except Exception as error:
-            primitives.append([name, f"不可用（{type(error).__name__}）"])
+    fit_rotation = np.radians(float(fit_theta))
+    fx = x0 + fit_a * np.cos(angles) * np.cos(fit_rotation) - fit_b * np.sin(angles) * np.sin(fit_rotation)
+    fy = y0 + fit_a * np.cos(angles) * np.sin(fit_rotation) + fit_b * np.sin(angles) * np.cos(fit_rotation)
+
+    zoom_curves = [
+        series("原始可辨椭圆", ex, ey, color="#E76F51"),
+        series("拟合结果（Halir 1998）", fx, fy, color="#2A9D8F", dashed=True),
+        series("60 个采样点", points[:, 0], points[:, 1], color="#8B9099", mode="scatter"),
+    ]
+
+    # 拟合把「采样点 → 二次曲线 → 标准形」倒推回原始参数
+    compare = [
+        ["中心 (x₀, y₀)", f"({cx:.4f}, {cy:.4f})", f"({x0:.4f}, {y0:.4f})", "完全一致"],
+        ["半轴 1", f"{a_raw / 1000:.6f}", f"{fit_b:.6f}", "轴序互换"],
+        ["半轴 2", f"{b_raw / 1000:.6f}", f"{fit_a:.6f}", "轴序互换"],
+        ["旋转角 θ", f"{theta_raw:.2f}°", f"{float(fit_theta):.2f}°", f"差 {theta_raw - float(fit_theta):.2f}°（约 90°，表示约定差异）"],
+    ]
 
     residuals = []
-    if coefficients is not None:
-        for i, point in enumerate(points[:3]):
-            x, y = point
-            value = coefficients[0] * x * x + coefficients[1] * x * y + coefficients[2] * y * y + coefficients[3] * x + coefficients[4] * y + coefficients[5]
-            residuals.append([f"点 {i + 1}", f"{value:+.2e}"])
+    for i, point in enumerate(points[:3]):
+        x, y = point
+        value = (
+            coefficients[0] * x * x
+            + coefficients[1] * x * y
+            + coefficients[2] * y * y
+            + coefficients[3] * x
+            + coefficients[4] * y
+            + coefficients[5]
+        )
+        residuals.append([f"点 {i + 1}", f"{x:.5f}", f"{y:.5f}", f"{value:+.2e}"])
+
+    primitives = []
+    for label, call in [
+        (
+            "primitive_grid(width_segments=4, height_segments=4)",
+            lambda: colour.geometry.primitive_grid(width_segments=4, height_segments=4)[0],
+        ),
+        (
+            "primitive_cube(width_segments=2, height_segments=2, depth_segments=2)",
+            lambda: colour.geometry.primitive_cube(width_segments=2, height_segments=2, depth_segments=2)[0],
+        ),
+        (
+            "primitive_vertices_sphere(radius=0.5, segments=16)",
+            lambda: colour.geometry.primitive_vertices_sphere(radius=0.5, segments=16),
+        ),
+    ]:
+        try:
+            primitives.append([label, str(np.asarray(call()).shape), "顶点数组形状"])
+        except Exception as error:
+            primitives.append([label, f"不可用（{type(error).__name__}）", "—"])
+
+    cross = colour.geometry.intersect_line_segments(np.array([[0, 0], [1, 1]]), np.array([[0, 1], [1, 0]]))
+    parallel = colour.geometry.intersect_line_segments(np.array([[0, 0], [1, 1]]), np.array([[0, 1], [1, 2]]))
+    segment_rows = [
+        [
+            "交叉 (0,0)-(1,1) vs (0,1)-(1,0)",
+            f"交点 ({cross.xy[0][0][0]:.3f}, {cross.xy[0][0][1]:.3f})",
+            f"intersect={bool(cross.intersect[0][0])}",
+        ],
+        [
+            "平行 (0,0)-(1,1) vs (0,1)-(1,2)",
+            "无交点（坐标 nan）",
+            f"parallel={bool(parallel.parallel[0][0])}、intersect={bool(parallel.intersect[0][0])}",
+        ],
+    ]
+
+    all_rows = [
+        [f"{i + 1}", f"{r[0]:.4f}", f"{r[1]:.4f}", f"{r[2]:.2f}", f"{r[3]:.2f}", f"{r[4]:.1f}"]
+        for i, r in enumerate(data)
+    ]
 
     return panel(
         "geometry",
@@ -470,11 +521,51 @@ def panel_geometry() -> dict:
         "几何与椭圆拟合",
         "MacAdam 1942 的椭圆告诉你「人眼在各方向上有多不敏感」；把它拟合成二次曲线，就能反过来量化局部均匀性。geometry 子模块负责这类拟合、图元与线段求交。",
         [
-            image(fig, caption=f"第 11 个 MacAdam 椭圆（中心 {cx:.3f}, {cy:.3f}，长轴 {a10:.2f}×10⁻³）与拟合结果", maxw="400px"),
-            table(["拟合系数", "值"], [[f"c{i}", f"{c:.4e}"] for i, c in enumerate(coefficients)] if coefficients is not None else [["—", "拟合失败"]],
-                  title="二次曲线系数（Halir 1998 直接最小二乘）", mono=[0, 1], widths=["80px", "160px"]),
-            table(["采样点", "二次型残差"], residuals, title="拟合残差（应接近 0）", mono=[0, 1], widths=["90px", "150px"]),
-            table(["图元生成", "输出形状"], primitives, title="网格/立方/球面图元", mono=[0, 1], widths=["170px", "140px"]),
+            chart(
+                zoom_curves,
+                xlabel="CIE x",
+                ylabel="CIE y",
+                title=f"第 11 组 MacAdam 椭圆：采样点 → 拟合椭圆（中心 {cx:.3f}, {cy:.3f}）",
+                caption="坐标跨度只有 0.002×0.004，所以看上去接近一个圆——这正是 MacAdam 椭圆的特点。拟合曲线与原曲线在此分辨率下完全重合。",
+                height=280,
+            ),
+            table(
+                ["参数", "原始数据", "拟合恢复", "说明"],
+                compare,
+                title="拟合是否还原了原始参数",
+                mono=[1, 2],
+                widths=["110px", "140px", "140px", "auto"],
+                note="拟合不是「造出一个新椭圆」，而是从 60 个点反推原来那组参数：中心精度到小数点后 4 位，半轴完全对上（顺序互换），θ 相差 90° 属于标准形表示法的约定差异。",
+            ),
+            table(
+                ["采样点", "x", "y", "二次型残差"],
+                residuals,
+                title="二次型残差（隐式方程代入，应接近 0）",
+                mono=[1, 2, 3],
+                widths=["80px", "120px", "120px", "130px"],
+            ),
+            table(
+                ["调用", "输出", "说明"],
+                primitives,
+                title="图元生成（geometry 子模块）",
+                mono=[0],
+                widths=["auto", "140px", "110px"],
+                note="primitive_* 返回 (vertices, indexes, faces) 三元组，这里取第 0 个元素的形状；colour.geometry 没有 primitive_sphere，球面用 primitive_vertices_sphere。",
+            ),
+            table(
+                ["线段", "结果", "标志位"],
+                segment_rows,
+                title="线段求交（intersect_line_segments）",
+                mono=[1, 2],
+                widths=["auto", "170px", "auto"],
+            ),
+            table(
+                ["#", "u", "v", "a ×10⁻³", "b ×10⁻³", "θ°"],
+                all_rows,
+                title="全部 25 组 MacAdam 1942 椭圆（原始数据）",
+                mono=[1, 2, 3, 4, 5],
+                note="u/v 是色度图中心坐标，a/b 是长短半轴（×10⁻³），θ 是长轴方向角。面板 25 会把它们整体画到 CIE 1931 色度图上。",
+            ),
             kv(
                 [
                     ("椭圆拟合", "ellipse_fitting / ellipse_fitting_Halir1998 / ellipse_coefficients_general_form", "3 种表示互转"),
