@@ -10,6 +10,8 @@ MAX_COLOURS = 12
 MAX_STEPS = 101
 # 光谱采样点数上限
 MAX_SPECTRAL_SAMPLES = 401
+# 请求体上限（字节）：中间件拦截，不进路由（方案 6.1）
+MAX_BODY_BYTES = 32 * 1024
 # 允许的光谱范围（nm）
 SPECTRAL_RANGE = (360.0, 830.0)
 

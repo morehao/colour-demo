@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from pathlib import Path
 
@@ -17,13 +18,30 @@ from fastapi.staticfiles import StaticFiles
 
 from . import SUPPORTED_COLOUR_VERSION, __version__, assert_colour_version
 from .api.routes import router
+from .config import MAX_BODY_BYTES
 from .core.errors import ApiError
 from .core.parsing import ColourParseError
 
 logger = logging.getLogger("colour_demo")
 
 # 校验报错里把字段名换成人话（方案 6.3：要能指出是哪个色值）
-_FIELD_LABELS = {"colors": "颜色", "target_spaces": "目标空间", "method": "方法"}
+_FIELD_LABELS = {
+    "colors": "颜色",
+    "target_spaces": "目标空间",
+    "method": "方法",
+    "spaces": "色彩空间",
+    "illuminants": "光源",
+    "models": "模型",
+    "source": "源白点",
+    "target": "目标白点",
+    "experiment": "实验",
+    "deficiency": "色觉障碍类型",
+    "severity": "严重程度",
+    "size": "LUT 尺寸",
+    "gains": "通道增益",
+    "surround": "环绕条件",
+    "L_A": "适应亮度",
+}
 
 PROTOTYPE_DIR = Path(__file__).resolve().parents[2] / "docs" / "prototype"
 
@@ -80,6 +98,26 @@ def create_app() -> FastAPI:
         trace_id = uuid.uuid4().hex[:12]
         logger.exception("unexpected error trace_id=%s", trace_id)
         return JSONResponse(status_code=500, content=_detail("internal_error", "服务内部错误", trace_id=trace_id))
+
+    @app.middleware("http")
+    async def _instrument(request: Request, call_next):
+        """方案 6.1：每条响应带 `X-Compute-Ms`；请求体超 32 KB 直接 413，不进路由。"""
+
+        declared = request.headers.get("content-length")
+        try:
+            too_big = declared is not None and int(declared) > MAX_BODY_BYTES
+        except ValueError:
+            too_big = False
+        if too_big:
+            return JSONResponse(
+                status_code=413,
+                content=_detail("too_large", f"请求体超过 {MAX_BODY_BYTES} 字节上限"),
+            )
+
+        started = time.perf_counter()
+        response = await call_next(request)
+        response.headers["X-Compute-Ms"] = f"{(time.perf_counter() - started) * 1000:.2f}"
+        return response
 
     app.include_router(router)
 
