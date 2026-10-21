@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-colour-demo = "colour_demo.main:app"
+colour-demo = "colour_demo.main:serve"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/colour_demo"]

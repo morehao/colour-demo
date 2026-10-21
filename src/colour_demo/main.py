@@ -95,3 +95,15 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+def serve() -> None:
+    """`colour-demo` 控制台入口：等价于 uvicorn 一条命令（方案 G3）。"""
+
+    import uvicorn
+
+    uvicorn.run("colour_demo.main:app", host="127.0.0.1", port=8000, log_level="info")
+
+
+if __name__ == "__main__":
+    serve()
