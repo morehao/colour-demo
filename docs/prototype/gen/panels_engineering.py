@@ -22,6 +22,8 @@ from .common import (
     rgb_to_hex,
     series,
     stats,
+    strip,
+    strips,
     swatches,
     table,
     vec,
@@ -137,43 +139,49 @@ def panel_characterisation() -> dict:
     reference = np.array([xyz for xyz in checker.data.values()], dtype=float)  # XYZ，0–1，D65
     xyzw_a = colour.xy_to_XYZ(colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["A"])
     xyzw_d65 = XYZ_W
-    rgb_under_a = colour.XYZ_to_sRGB(colour.chromatic_adaptation(reference, xyzw_d65, xyzw_a, method="Von Kries"))
-    corrected = np.clip(
-        colour.characterisation.colour_correction(
-            np.clip(rgb_under_a, 0, 1),
-            reference,
-            reference,
-            method="Cheung 2004",
-        ),
+    # 真值（D65 下的理想 sRGB）与「在 A 光源下拍到的偏色版本」
+    ideal = np.clip(colour.XYZ_to_sRGB(reference), 0, 1)
+    captured = np.clip(
+        colour.XYZ_to_sRGB(colour.chromatic_adaptation(reference, xyzw_d65, xyzw_a, method="Von Kries")),
         0,
         1,
     )
-    rows = []
-    for label, data in [("校正前", np.clip(rgb_under_a, 0, 1)), ("校正后", corrected)]:
-        deltas = [
-            delta_e(rgb_to_hex(data[i]), rgb_to_hex(colour.XYZ_to_sRGB(reference[i])))
-            for i in range(len(data))
-        ]
-        rows.append([label, f"{float(np.mean(deltas)):.1f}", f"{float(np.max(deltas)):.1f}"])
 
-    fig, ax = plt.subplots(figsize=(3.8, 1.6), dpi=110)
-    fig.patch.set_alpha(0)
-    band = np.concatenate([np.clip(rgb_under_a[:12], 0, 1)[None, :, :], corrected[:12][None, :, :]], axis=0)
-    ax.imshow(band, aspect="auto")
-    ax.set_yticks([0, 1])
-    ax.set_yticklabels(["校正前", "校正后"], fontsize=6)
-    ax.set_xticks([])
+    def deltas(data) -> tuple[float, float]:
+        values = [delta_e(rgb_to_hex(data[i]), rgb_to_hex(ideal[i])) for i in range(len(data))]
+        return float(np.mean(values)), float(np.max(values))
+
+    before_mean, before_max = deltas(captured)
+    rows = [["校正前（A 光源下拍摄）", f"{before_mean:.2f}", f"{before_max:.2f}"]]
+    corrected: dict[str, np.ndarray] = {}
+    # Finlayson 2015 默认 degree=1，与 Cheung 2004 的 3 项展开等价、结果完全相同；
+    # 用 3 阶展开才能体现该方法「靠更高次项降残差」的差异。
+    correction_specs = [
+        ("Cheung 2004", {"method": "Cheung 2004"}),
+        ("Finlayson 2015 · 3 阶", {"method": "Finlayson 2015", "degree": 3}),
+        ("Vandermonde", {"method": "Vandermonde"}),
+    ]
+    for label, spec in correction_specs:
+        # colour_correction(RGB, M_T, M_R)：M_T=实测、M_R=参考真值；两边都传 reference 会退化成恒等变换
+        data = np.clip(colour.characterisation.colour_correction(captured, captured, ideal, **spec), 0, 1)
+        corrected[label] = data
+        mean, peak = deltas(data)
+        rows.append([f"校正后（{label}）", f"{mean:.2f}", f"{peak:.2f}"])
 
     methods = []
-    for method in ["Cheung 2004", "Finlayson 2015", "Vandermonde"]:
+    for label, spec in correction_specs:
         try:
-            matrix_correction = colour.characterisation.matrix_colour_correction(
-                np.clip(rgb_under_a, 0, 1), reference, method=method
+            matrix_correction = np.asarray(colour.characterisation.matrix_colour_correction(captured, ideal, **spec))
+            methods.append(
+                [label, f"{matrix_correction.shape[0]}×{matrix_correction.shape[1]}", "RGB → XYZ 的线性映射"]
             )
-            methods.append([method, f"{np.asarray(matrix_correction).shape[0]}×{np.asarray(matrix_correction).shape[1]}"])
         except Exception as error:
-            methods.append([method, f"不可用（{type(error).__name__}）"])
+            methods.append([label, f"不可用（{type(error).__name__}）", "—"])
 
+    cheung = corrected["Cheung 2004"]
+    cheung_mean, cheung_max = deltas(cheung)
+    best_label = min(corrected, key=lambda k: deltas(corrected[k])[0])
+    best_mean = deltas(corrected[best_label])[0]
     return panel(
         "characterisation",
         "工程与数据",
@@ -181,9 +189,35 @@ def panel_characterisation() -> dict:
         "色彩校正与 ACES",
         "「相机拍出来偏色」的本质是一次线性变换。用 24 色卡在已知光源下拍一张，解出一个校正矩阵，就能把整批图像拉回正确颜色——这就是 Cheung 2004 与 Finlayson 2015 在做的事。",
         [
-            image(fig, caption="24 色卡前 12 色：校正前后的并排对比", maxw="480px"),
-            table(["阶段", "平均 ΔE", "最大 ΔE"], rows, title="校正效果（ColorChecker 24）", mono=[1, 2], widths=["120px", "110px", "110px"]),
-            table(["矩阵方法", "输出维度"], methods, title="三种多项式展开", mono=[0, 1], widths=["180px", "130px"]),
+            strips(
+                [
+                    strip(
+                        "校正前",
+                        "模拟在 A 光源（2856 K）下拍摄，色卡整体偏黄",
+                        [rgb_to_hex(captured[i]) for i in range(12)],
+                        [("平均 ΔE", f"{before_mean:.2f}"), ("最大 ΔE", f"{before_max:.2f}")],
+                    ),
+                    strip(
+                        "校正后",
+                        "Cheung 2004 多项式校正，拉回 D65 真值",
+                        [rgb_to_hex(cheung[i]) for i in range(12)],
+                        [("平均 ΔE", f"{cheung_mean:.2f}"), ("最大 ΔE", f"{cheung_max:.2f}")],
+                    ),
+                ],
+                title="24 色卡前 12 色：校正前后",
+                caption="色块为真实计算结果（sRGB），非示意色；ΔE 以 ΔE*ab 计，基准是色卡在 D65 下的真实值。",
+            ),
+            table(["阶段", "平均 ΔE", "最大 ΔE"], rows, title="校正效果（ColorChecker 24）", mono=[1, 2], widths=["190px", "110px", "110px"]),
+            table(["矩阵方法", "输出维度", "说明"], methods, title="三种多项式展开", mono=[0, 1], widths=["160px", "110px", "220px"]),
+            note(
+                f"口径：把「在 A 光源下拍摄」建模为 D65 参考色经 Von Kries 色适应到 A 再转 sRGB，"
+                f"平均 ΔE 从 {before_mean:.2f} 降到 {cheung_mean:.2f}（Cheung 2004）；"
+                f"本组参数下最优是 {best_label}，平均 ΔE {best_mean:.2f}。"
+                "多项式校正只能把偏色拉回、无法归零：残差来自色卡的非线性响应与色适应模型的差异，这是方法本身的局限。"
+                "另外 Finlayson 2015 默认 degree=1 与 Cheung 2004 的 3 项展开数学等价，会给出完全相同的数字，故这里取 3 阶以便区分。",
+                tone="info",
+                title="口径与误差来源",
+            ),
             kv(
                 [
                     ("色卡数据", "CCS_COLOURCHECKERS / SDS_COLOURCHECKERS / ColourChecker", "24 色卡与光谱版本"),
