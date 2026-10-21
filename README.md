@@ -51,8 +51,8 @@ red_lab = colour.XYZ_to_Lab(colour.sRGB_to_XYZ([1.0, 0.0, 0.0]))
 print(round(colour.delta_E(lab, red_lab, method="CIE 2000"), 2))   # ≈ 50.06
 ```
 
-> 说明：`colour.convert()` 的自动转换图还需要 `networkx`；绘图需要 `matplotlib`。
-> 安装时用 `pip install "colour-science[optional]"` 可以一次带齐常用可选依赖。
+> 说明：`colour.convert()` 的自动转换图还需要 `networkx`，绘图还需要 `matplotlib` 与 `scipy`。
+> 按需补装即可：`pip install colour-science matplotlib networkx scipy`。
 
 ## 目标 CLI（待实现）
 
