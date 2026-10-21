@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gc
+import warnings
+
 import numpy as np
 
 import colour
@@ -587,43 +590,69 @@ def panel_geometry() -> dict:
 # --------------------------------------------------------------------------- #
 def panel_optics() -> dict:
     wavelengths = np.arange(400, 701, 5)
-    fig, ax = new_axes((4.2, 2.3), dpi=110)
+    film_curves = []
+    film_rows = []
     for thickness, css in [(200, "#264653"), (350, "#3B82F6"), (500, "#E76F51")]:
-        try:
-            R, _ = colour.phenomena.thin_film_tmm(
-                np.array([1.0, 1.38, 1.0]), float(thickness), wavelengths
-            )
-            values = np.asarray(R).reshape(len(wavelengths), -1)[:, 0]
-            ax.plot(wavelengths, values, color=css, lw=1.1, label=f"{thickness} nm")
-        except Exception:
-            continue
-    ax.set_xlabel("波长 / nm", fontsize=7, color="#555A63")
-    ax.set_ylabel("反射率", fontsize=7, color="#555A63")
-    ax.legend(fontsize=5.5, frameon=False)
-
-    fig2, ax2 = new_axes((4.0, 2.0), dpi=110)
-    try:
-        scattering = colour.phenomena.sd_rayleigh_scattering(colour.SpectralShape(360, 780, 5))
-        ax2.plot(scattering.wavelengths, scattering.values, color="#3B82F6", lw=1.2, label="Rayleigh 散射")
-        ax2.set_xlabel("波长 / nm", fontsize=7, color="#555A63")
-        ax2.legend(fontsize=5.5, frameon=False)
-    except Exception:
-        pass
-
-    fig3, ax3 = new_axes((3.4, 2.0), dpi=110)
-    substrate = np.linspace(0.05, 20, 60)
-    for method, css in [("Michaelis 1913", "#264653"), ("Abebe 2017", "#E76F51")]:
-        try:
-            rates = [
-                float(colour.biochemistry.reaction_rate_MichaelisMenten(float(s), 1.0, 0.8, method=method))
-                for s in substrate
+        reflected, transmitted = colour.phenomena.thin_film_tmm(
+            np.array([1.0, 1.38, 1.0]), float(thickness), wavelengths
+        )
+        values = np.asarray(reflected).reshape(len(wavelengths), -1)[:, 0]
+        transmitted_values = np.asarray(transmitted).reshape(len(wavelengths), -1)[:, 0]
+        film_curves.append(series(f"{thickness} nm", wavelengths, values, color=css))
+        at550 = float(values[int(np.argmin(np.abs(wavelengths - 550)))])
+        film_rows.append(
+            [
+                f"{thickness} nm",
+                f"{at550:.4f}",
+                f"{float(values.max()):.4f}",
+                f"{float(np.mean(values)):.4f}",
+                f"{float(transmitted_values.mean()):.4f}",
             ]
-            ax3.plot(substrate, rates, color=css, lw=1.2, label=method)
-        except Exception:
-            continue
-    ax3.set_xlabel("底物浓度 S", fontsize=7, color="#555A63")
-    ax3.set_ylabel("反应速率", fontsize=7, color="#555A63")
-    ax3.legend(fontsize=5.5, frameon=False)
+        )
+
+    scattering = colour.phenomena.sd_rayleigh_scattering(colour.SpectralShape(360, 780, 5))
+    rayleigh_curve = [
+        series("Rayleigh 散射强度", scattering.wavelengths, scattering.values, color="#3B82F6")
+    ]
+    rayleigh_rows = []
+    for short, long in [(400.0, 700.0), (450.0, 650.0), (450.0, 550.0)]:
+        measured = float(scattering[short] / scattering[long])
+        theory = (long / short) ** 4
+        rayleigh_rows.append(
+            [
+                f"{short:.0f} / {long:.0f} nm",
+                f"{measured:.3f}",
+                f"{theory:.3f}",
+                f"{(measured / theory - 1) * 100:+.1f}%",
+            ]
+        )
+
+    substrate = np.linspace(0.05, 20, 60)
+    kinetics_curves = [
+        series(
+            "Michaelis 1913",
+            substrate,
+            [float(colour.biochemistry.reaction_rate_MichaelisMenten(s, 1.0, 0.8)) for s in substrate],
+            color="#264653",
+        ),
+        # Abebe 2017 多一个偏置因子 b_m，不传会抛 TypeError（原实现把它吞掉了，导致这条曲线从未画出）
+        series(
+            "Abebe 2017（b_m=0.813）",
+            substrate,
+            [
+                float(colour.biochemistry.reaction_rate_MichaelisMenten(s, 1.0, 0.8, method="Abebe 2017", b_m=0.813))
+                for s in substrate
+            ],
+            color="#E76F51",
+        ),
+    ]
+    kinetics_rows = []
+    for s in [0.5, 2.0, 5.0, 20.0]:
+        classic = float(colour.biochemistry.reaction_rate_MichaelisMenten(s, 1.0, 0.8))
+        revised = float(
+            colour.biochemistry.reaction_rate_MichaelisMenten(s, 1.0, 0.8, method="Abebe 2017", b_m=0.813)
+        )
+        kinetics_rows.append([f"{s:g}", f"{classic:.4f}", f"{revised:.4f}", f"{revised - classic:+.4f}"])
 
     return panel(
         "optics",
@@ -632,9 +661,57 @@ def panel_optics() -> dict:
         "光学现象与响应动力学",
         "colour 不只会算颜色，还会算光：薄膜干涉为什么让肥皂泡变彩虹、天空为什么是蓝的（瑞利散射）、光在两种介质间怎么拐弯（Snell）。biochemistry 则提供光感受器响应的动力学模型。",
         [
-            image(fig, caption="单层薄膜（n=1.38）在不同厚度下的反射光谱", maxw="470px"),
-            image(fig2, caption="瑞利散射：短波被散射得更强——这就是蓝天与红日的来源", maxw="440px"),
-            image(fig3, caption="Michaelis–Menten 反应速率：两种修正版本的差异", maxw="380px"),
+            chart(
+                film_curves,
+                xlabel="波长 / nm",
+                ylabel="反射率 R",
+                title="单层薄膜（n=1.38，空气/膜/空气）的反射光谱",
+                caption="传输矩阵法（thin_film_tmm）算出的真实反射率：膜厚改变光程差，反射率随波长周期性起伏——这就是肥皂泡与油膜的彩虹。注意反射率整体很小（<9%），因为只有 2.5% 的单面菲涅尔反射在相互干涉。",
+                height=260,
+                zero=True,
+            ),
+            chart(
+                rayleigh_curve,
+                xlabel="波长 / nm",
+                ylabel="散射强度（相对）",
+                title="瑞利散射：短波被散射得更强",
+                caption="蓝光（450 nm）的散射强度约为红光的 4 倍以上——天空是蓝的、夕阳是红的，都来自这条曲线。",
+                height=230,
+                zero=True,
+            ),
+            table(
+                ["波长比", "实测强度比", "(λ₂/λ₁)⁴ 理论值", "偏差"],
+                rayleigh_rows,
+                title="瑞利散射是否真的遵循 1/λ⁴",
+                mono=[1, 2, 3],
+                widths=["130px", "130px", "160px", "110px"],
+                note="实测比理论值系统性偏高 2–5%：colour 的实现里还含折射率色散与大气层厚度修正，并非教科书上的纯 1/λ⁴ 项。这不影响「短波散射更强」的结论，但定量时不能直接套 1/λ⁴。",
+            ),
+            chart(
+                kinetics_curves,
+                xlabel="底物浓度 S",
+                ylabel="反应速率 v",
+                title="Michaelis–Menten 动力学：经典式 vs Abebe 2017 修正",
+                caption="V_max=1.0、K_m=0.8 相同，只改公式：Abebe 2017 在分母乘了偏置因子 b_m，于是上渐近线从 V_max 变成 V_max/b_m = 1.23，半饱和点也从 K_m 挪到 K_m/b_m。",
+                height=240,
+                zero=True,
+            ),
+            table(
+                ["S", "Michaelis 1913", "Abebe 2017（b_m=0.813）", "差值"],
+                kinetics_rows,
+                title="两种动力学模型在同参数下的差异",
+                mono=[0, 1, 2, 3],
+                widths=["80px", "150px", "190px", "110px"],
+                note="经典式 v = V_max·S/(K_m+S)：S=K_m=0.8 时正好是 V_max 的一半，上渐近线是 V_max。Abebe 2017 的 v = V_max·S/(b_m·S+K_m)：b_m=0.813<1，分母被压小，速率整体抬高且上渐近线升到 V_max/b_m≈1.23——所以 S=20 时速率超过 1.0 并不矛盾，那是公式定义的另一条渐近线。",
+            ),
+            table(
+                ["膜厚", "R @ 550 nm", "R 最大", "R 平均", "T 平均"],
+                film_rows,
+                title="薄膜数值（对应上方第一张图）",
+                mono=[0, 1, 2, 3, 4],
+                widths=["100px", "130px", "110px", "110px", "110px"],
+                note="R + T ≈ 1（无损介质），可作为传输矩阵实现的健全性检查。",
+            ),
             kv(
                 [
                     ("薄膜工具", "thin_film_tmm / multilayer_tmm / light_water_refractive_index_Schiebener1990", "传输矩阵法"),
@@ -656,35 +733,61 @@ def panel_optics() -> dict:
 # 25 图表画廊
 # --------------------------------------------------------------------------- #
 def panel_gallery() -> dict:
+    # plotting 子模块是全库唯一必须 matplotlib 的地方（D7 例外）：
+    # 这些函数自带图例、色度背景与坐标轴样式，改写成数据块等于重做一套渲染器。
+    # 但它是本机最容易触发 jetsam 的面板：每张图编码完必须立刻 close + collect，
+    # 否则 4 张图同时驻留会把进程推到系统内存回收边缘（实测 exit 137）。
+    spec = [
+        (
+            "可见光谱色带",
+            lambda ax: colour.plotting.plot_visible_spectrum(axes=ax, show=False),
+            "plot_visible_spectrum：把 380–780 nm 渲染成连续色带，是「波长 → 颜色」最直观的一次演示。",
+            "3.2",
+            "1.6",
+        ),
+        (
+            "黑体辐射",
+            lambda ax: colour.plotting.plot_blackbody_spectral_radiance(5000, axes=ax, show=False),
+            "plot_blackbody_spectral_radiance：5000 K 黑体的光谱辐亮度，峰值随温度按维恩位移定律移动。",
+            "3.2",
+            "2.0",
+        ),
+        (
+            "MacAdam 椭圆",
+            lambda ax: colour.plotting.plot_ellipses_MacAdam1942_in_chromaticity_diagram_CIE1931(axes=ax, show=False),
+            "plot_ellipses_MacAdam1942_in_chromaticity_diagram_CIE1931：把 25 组感知等距椭圆画到 CIE 1931 色度图上（数据见面板 23）。",
+            "3.2",
+            "2.2",
+        ),
+    ]
+
     images = []
-    try:
-        fig, ax = new_axes((3.2, 1.6), dpi=110)
-        colour.plotting.plot_visible_spectrum(axes=ax, show=False)
-        ax.set_axis_off()
-        images.append(image(fig, caption="plot_visible_spectrum：可见光谱色带", maxw="100%"))
-    except Exception:
-        pass
-    try:
-        fig, ax = new_axes((3.2, 2.0), dpi=110)
-        colour.plotting.plot_blackbody_spectral_radiance(5000, axes=ax, show=False)
-        ax.set_title("")
-        images.append(image(fig, caption="plot_blackbody_spectral_radiance：5000 K 黑体辐射", maxw="100%"))
-    except Exception:
-        pass
-    try:
-        fig, ax = new_axes((3.2, 2.2), dpi=110)
-        colour.plotting.plot_ellipses_MacAdam1942_in_chromaticity_diagram_CIE1931(axes=ax, show=False)
-        ax.set_title("")
-        images.append(image(fig, caption="plot_ellipses_MacAdam1942：感知等距椭圆", maxw="100%"))
-    except Exception:
-        pass
-    try:
-        fig, ax = new_axes((3.2, 2.0), dpi=110)
-        colour.plotting.plot_single_sd(colour.SDS_ILLUMINANTS["FL2"], axes=ax, show=False)
-        ax.set_title("")
-        images.append(image(fig, caption="plot_single_sd：荧光灯 SPD", maxw="100%"))
-    except Exception:
-        pass
+    for label, paint, caption, width, height in spec:
+        fig, ax = new_axes((float(width), float(height)), dpi=110)
+        try:
+            xlim_before = ax.get_xlim()
+            with warnings.catch_warnings():
+                # colour 内部画 MacAdam 椭圆时会抛 numpy ComplexWarning（虚部恒 0），属库内噪声
+                warnings.simplefilter("ignore", np.exceptions.ComplexWarning)
+                result = paint(ax)
+            # plot_blackbody_spectral_radiance 会把曲线画进传入的 axes，却不设置坐标范围
+            # （xlim 仍停在 0–1，线画在视野外），且返回的是一个空白模板 figure —— 只能自己补 autoscale。
+            if ax.get_xlim() == xlim_before and ax.get_lines():
+                # 该函数不设坐标范围，且额外画了 474 个色块补丁（占满 0–1），
+                # relim 会被补丁带偏，只能直接用曲线的数据范围定轴。
+                xs = np.concatenate([np.asarray(line.get_xdata(), dtype=float) for line in ax.get_lines()])
+                ys = np.concatenate([np.asarray(line.get_ydata(), dtype=float) for line in ax.get_lines()])
+                ax.set_xlim(float(xs.min()), float(xs.max()))
+                ax.set_ylim(0.0, float(ys.max()) * 1.05)
+            if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], plt.Figure) and result[0] is not fig:
+                plt.close(result[0])  # 丢弃函数内部新建的空白画布
+            ax.set_title("")
+            # 固定边距代替 bbox_inches="tight"：这些图的 artist 太多，tight bbox 会把进程撑爆
+            fig.subplots_adjust(left=0.16, right=0.97, top=0.92, bottom=0.2)
+            images.append(image(fig, caption=caption, maxw="560px", tight=False))
+        finally:
+            plt.close(fig)
+            gc.collect()
 
     groups = []
     for prefix, label in [
@@ -700,25 +803,37 @@ def panel_gallery() -> dict:
         if names:
             groups.append([label, str(len(names)), " · ".join(names[:4]) + (" …" if len(names) > 4 else "")])
 
+    total = len([n for n in colour.plotting.__all__ if n.startswith("plot_")])
+    exported = len(colour.plotting.__all__)
     return panel(
         "gallery",
         "数据与算法",
         "25",
         "图表画廊",
-        "`colour.plotting` 自带 96 个绘图函数：从色度图到薄膜反射率，从 SPD 到色卡检测结果。它们既是演示的素材，也是「不用自己画图」的现成能力。",
+        f"`colour.plotting` 导出 {exported} 个名字，其中 {total} 个是 `plot_*` 绘图函数：从色度图到薄膜反射率，从 SPD 到色卡检测结果。它们既是演示的素材，也是「不用自己画图」的现成能力——代价是必须服务端渲染位图，所以全站只在这一页破例。",
         [
             *images,
-            table(["绘图分组", "数量", "函数举例"], groups, title="plotting 的 96 个函数按前缀分组", mono=[1], widths=["150px", "70px", "auto"]),
+            table(
+                ["绘图分组", "数量", "函数举例"],
+                groups,
+                title=f"plotting 的 {total} 个 plot_* 函数按前缀分组（__all__ 共 {exported} 个导出名，其余为样式/工具函数）",
+                mono=[1],
+                widths=["150px", "70px", "auto"],
+                note="其余面板一律走 chart 块（前端 SVG、数据驱动）；只有本页这些自带色度背景与图例的成品图用 matplotlib，且按内存预算限定 3 张。",
+            ),
             kv(
                 [
                     ("样式系统", "colour_style / override_style / artist / CONSTANTS_COLOUR_STYLE", "统一主题"),
                     ("3D 图", "plot_RGB_colourspace_section / plot_RGB_scatter（需 trimesh）", "可选依赖"),
                     ("导出", "savefig 前设置 Agg 后端；服务端固定 dpi 与画幅", "见方案 7.4"),
+                    ("内存预算", "每张图编码后 plt.close(fig) + gc.collect()；本页限 3 张", "实测单张 130–150 MB"),
                 ],
-                title="口径",
+                title="能力",
             ),
         ],
         phase="M3",
         apis=["POST /api/v1/plot"],
-        footer="对应 API：`POST /api/v1/plot`；只开放白名单内的 12 个绘图函数（画幅、dpi、样式由服务端固定）。",
+        footer="对应 API：`POST /api/v1/plot`；依赖 `colour.plotting` 的 plot_* 函数，服务端 Agg 后端渲染位图。",
     )
+
+

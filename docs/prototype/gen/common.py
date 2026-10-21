@@ -157,10 +157,13 @@ def series(name: str, xs, ys, color: str | None = None, dashed: bool = False,
     }
 
 
-def image(fig, caption: str = "", alt: str = "", dpi: int = 110, maxw: str = "520px") -> dict:
+def image(fig, caption: str = "", alt: str = "", dpi: int = 110, maxw: str = "520px",
+          tight: bool = True) -> dict:
+    """tight=False 用于 artist 极多的图（如黑体辐射、色度图）：
+    bbox_inches='tight' 会遍历每个 artist 计算边界，在本机（swap=0）会直接触发 jetsam 击杀进程。"""
     return {
         "type": "image",
-        "src": fig_to_data_uri(fig, dpi=dpi),
+        "src": fig_to_data_uri(fig, dpi=dpi, tight=tight),
         "caption": caption,
         "alt": alt or caption,
         "maxw": maxw,
@@ -192,16 +195,19 @@ def chain(nodes) -> dict:
 # --------------------------------------------------------------------------- #
 # 图像编码
 # --------------------------------------------------------------------------- #
-def fig_to_data_uri(fig, dpi: int = 110) -> str:
+def fig_to_data_uri(fig, dpi: int = 110, tight: bool = True) -> str:
     buffer = io.BytesIO()
-    fig.savefig(
-        buffer,
-        format="png",
-        dpi=dpi,
-        bbox_inches="tight",
-        pad_inches=0.04,
-        transparent=True,
-    )
+    if tight:
+        fig.savefig(
+            buffer,
+            format="png",
+            dpi=dpi,
+            bbox_inches="tight",
+            pad_inches=0.04,
+            transparent=True,
+        )
+    else:
+        fig.savefig(buffer, format="png", dpi=dpi, transparent=True)
     plt.close(fig)
     return "data:image/png;base64," + base64.b64encode(_shrink(buffer.getvalue())).decode("ascii")
 
