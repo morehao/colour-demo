@@ -177,6 +177,13 @@ def main() -> None:
         meta = json.loads((CACHE / "meta.json").read_text(encoding="utf-8"))
         panels += meta["panels"]
 
+        # batch 3（19–25）按面板逐次补齐：b3.json 存在就并入，缺的面板继续走占位
+        b3_path = CACHE / "b3.json"
+        if b3_path.exists():
+            b3 = json.loads(b3_path.read_text(encoding="utf-8"))
+            panels += b3["panels"]
+            print(f"  b3: 并入 {len(b3['panels'])} 个面板（{', '.join(p['no'] for p in b3['panels'])}）")
+
         # 19–25 尚无数据：以占位面板进入导航（明确标注「数据待补充」）
         have = {p["no"] for p in panels}
         for stub in stub_panels():

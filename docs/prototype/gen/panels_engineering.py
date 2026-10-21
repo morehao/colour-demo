@@ -9,6 +9,7 @@ import colour
 import matplotlib.pyplot as plt  # noqa: E402
 
 from .common import (
+    chart,
     delta_e,
     fnum,
     hex_to_rgb,
@@ -28,7 +29,9 @@ from .common import (
 
 D65 = colour.CCS_ILLUMINANTS["CIE 1931 2 Degree Standard Observer"]["D65"]
 XYZ_W = colour.xy_to_XYZ(D65)
+D65_SD = colour.SDS_ILLUMINANTS["D65"]
 PALETTE = ["#264653", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51"]
+CURVE_CSS = ["#264653", "#3B82F6", "#2A9D8F", "#E76F51", "#8E44AD"]
 DEMO = "#3B82F6"
 
 
@@ -36,12 +39,15 @@ DEMO = "#3B82F6"
 # 19 光谱重建
 # --------------------------------------------------------------------------- #
 def panel_recovery() -> dict:
-    rgb = hex_to_rgb(DEMO)
-    xyz = colour.sRGB_to_XYZ(rgb)
+    encoded = hex_to_rgb(DEMO)
+    # Smits 1999 / Mallett 2019 的入参是**线性** RGB（见 colour 文档示例：
+    # XYZ_to_sRGB(XYZ, apply_cctf_encoding=False)），传编码值会把结果算偏。
+    linear = colour.cctf_decoding(encoded)
+    xyz = colour.sRGB_to_XYZ(encoded)
     methods = {}
     for label, call in [
-        ("Smits 1999", lambda: colour.recovery.RGB_to_sd_Smits1999(rgb)),
-        ("Mallett 2019", lambda: colour.recovery.RGB_to_sd_Mallett2019(rgb)),
+        ("Smits 1999", lambda: colour.recovery.RGB_to_sd_Smits1999(linear)),
+        ("Mallett 2019", lambda: colour.recovery.RGB_to_sd_Mallett2019(linear)),
         ("Jakob 2019", lambda: colour.recovery.XYZ_to_sd(xyz, method="Jakob 2019")),
         ("Meng 2015", lambda: colour.recovery.XYZ_to_sd(xyz, method="Meng 2015")),
     ]:
@@ -50,31 +56,36 @@ def panel_recovery() -> dict:
         except Exception:
             continue
 
-    fig, ax = new_axes((4.2, 2.4), dpi=110)
-    css = ["#264653", "#3B82F6", "#2A9D8F", "#E76F51"]
-    for (label, sd), color in zip(methods.items(), css):
-        ax.plot(sd.wavelengths, sd.values, color=color, lw=1.2, label=label)
-    ax.set_xlabel("波长 / nm", fontsize=7, color="#555A63")
-    ax.set_ylabel("相对功率", fontsize=7, color="#555A63")
-    ax.legend(fontsize=5.5, frameon=False)
-
     rows = []
+    curves = []
     for label, sd in methods.items():
-        # Smits 1999 的采样是非等间隔（380–720，10 点），先重采样到 5 nm 再积分
+        # 重建结果按**反射率**处理：在 D65 下积分回 XYZ，才是可比的 sRGB。
+        # 直接 sd_to_XYZ(sd) 会得到 0–100 的自发光标度，XYZ_to_sRGB 会把它裁成白色。
         samples = sd.copy()
+        # Smits 1999 采样非等间隔（380–720），ASTM E308 只接受 1/5/10/20 nm，先重采样
         if samples.shape.interval not in (1, 5, 10, 20):
             samples = samples.interpolate(
                 colour.SpectralShape(samples.shape.start, samples.shape.end, 5),
                 interpolator=colour.SpragueInterpolator,
             )
-        reconstructed = colour.XYZ_to_sRGB(colour.sd_to_XYZ(samples))
+        xyz_back = colour.sd_to_XYZ(samples, illuminant=D65_SD) / 100
+        reconstructed = np.clip(colour.XYZ_to_sRGB(xyz_back), 0, 1)
+        hex_back = rgb_to_hex(reconstructed).upper()
         rows.append(
             [
                 label,
-                rgb_to_hex(reconstructed).upper(),
-                f"{delta_e(rgb_to_hex(reconstructed), DEMO):.2f}",
+                hex_back,
+                f"{delta_e(hex_back, DEMO):.2f}",
                 f"{len(sd.values)}",
             ]
+        )
+        curves.append(
+            series(
+                label,
+                sd.wavelengths,
+                sd.values,
+                color=CURVE_CSS[len(curves) % len(CURVE_CSS)],
+            )
         )
 
     return panel(
@@ -84,8 +95,23 @@ def panel_recovery() -> dict:
         "光谱重建",
         "一支 RGB 背后是无穷多条光谱——这是同色异谱的根源。光谱重建就是「猜一条最合理的光谱」：Smits 用平滑基函数，Mallett 用 sRGB 优化基，Jakob 用 LUT。",
         [
-            image(fig, caption="同一支 #3B82F6 的四种重建光谱", maxw="470px"),
+            chart(
+                curves,
+                xlabel="波长 / nm",
+                ylabel="反射率",
+                title="四种方法的重建光谱",
+                caption=f"同一支 {DEMO} 的重建反射率曲线：形状各不相同，但在 D65 下积分回三刺激值后应当一致——这正是同色异谱。曲线由后端计算，前端 SVG 绘制。",
+                height=250,
+                zero=True,
+            ),
             table(["方法", "重建后的 sRGB", "与原色 ΔE", "波长采样点数"], rows, title="重建精度", mono=[1, 2, 3]),
+            note(
+                "重建曲线 → 三刺激值的口径：把 SD 当作反射率，在 CIE 1931 2° 观察者 + D65 光源下积分，"
+                "再除以 100 转到 0–1 量纲后转 sRGB。Mallett 2019 / Jakob 2019 / Meng 2015 由基函数/优化构造，"
+                "ΔE 精确为 0.00；Smits 1999 用平滑分段基函数，蓝端超出其覆盖范围，因此留有约 1 个 ΔE 的残差——这是方法本身的局限，不是实现误差。",
+                tone="info",
+                title="口径与误差来源",
+            ),
             kv(
                 [
                     ("同色异谱指数", "Lab_to_metamerism_index / XYZ_to_metamerism_index", "光谱不同、三刺激值相同"),

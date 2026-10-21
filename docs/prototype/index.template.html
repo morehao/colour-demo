@@ -134,8 +134,10 @@
   .step{height:20px;border-radius:3px;border:1px solid rgba(0,0,0,.05)}
 
   /* chart */
-  .chart-wrap{display:block}
-  .chart{width:100%;height:auto;display:block;max-width:100%}
+  /* SVG 用 viewBox 等比缩放：窄屏时字号会被一起缩小，故给最小宽度、在容器内横向滚动。
+     .chart-wrap 必须 min-width:0，否则 svg 的最小宽度会撑开单列网格、把整页裁掉。 */
+  .chart-wrap{display:block;overflow-x:auto;min-width:0;max-width:100%}
+  .chart{width:100%;height:auto;display:block;max-width:100%;min-width:620px}
   .chart text{font-family:var(--mono);font-size:9px;fill:var(--ink-3)}
   .chart .legend{font-family:var(--sans);font-size:10px}
   .chart-caption{color:var(--ink-3);font-size:11.5px}
@@ -246,8 +248,10 @@ const PHASE_CLASS = { M1: "tag--m1", M2: "tag--m2", M3: "tag--m3", M4: "tag--m4"
 /* ---------------- chart ---------------- */
 function renderChart(b) {
   const W = 880, H = b.height || 260;
-  const pad = { l: 46, r: 14, t: 12, b: 30 };
   const series = b.series.filter((s) => s.points.length);
+  // 图例单独占一条顶部带，避免落在绘图区里被曲线压住
+  const legendBand = series.length ? 20 : 0;
+  const pad = { l: 46, r: 14, t: 12 + legendBand, b: 30 };
   let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
   series.forEach((s) => s.points.forEach(([x, y]) => {
     if (isFinite(x)) { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); }
@@ -305,6 +309,7 @@ function renderChart(b) {
     <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(b.title || b.caption || "chart")}">
       ${grid}${paths}${axis}
       <text x="${W - pad.r}" y="${H - 4}" text-anchor="end">${esc(b.xlabel || "")}</text>
+      ${b.ylabel ? `<text transform="translate(11,${(H - pad.b + pad.t) / 2}) rotate(-90)" text-anchor="middle">${esc(b.ylabel)}</text>` : ""}
       ${legend}
     </svg>
     ${b.caption ? `<div class="chart-caption">${esc(b.caption)}</div>` : ""}
