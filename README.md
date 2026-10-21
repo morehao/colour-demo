@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：设计阶段（28 面板方案已定稿；原型 29 页全部出真实数据；服务端代码尚未实现）**
+**状态：M1 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，9 个端点 + 28 个测试全绿）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -52,6 +52,38 @@ Web 演示是主线，同样的能力也可以做成脚本化 CLI。下表是早
 | 渐变插值 | Oklab 空间线性插值 | sRGB / 线性 sRGB / Oklab 三段对比，标注步长均匀性 |
 | 色觉障碍模拟 | `colour.blindness.matrix_cvd_Machado2009` | 红色盲 / 绿色盲 / 蓝色盲下的同一组调色板 |
 | 一键报告 | 以上组合 | `out/report.md` + 全部配图 |
+
+## 服务端（M1，可跑）
+
+```bash
+# 安装（colour-science 版本被锁死，黄金值测试依赖它）
+uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
+
+# 启动：一条命令，零前端构建（G3）
+.venv/bin/python -m uvicorn colour_demo.main:app --port 8000
+# 不想装包也可以：PYTHONPATH=src .venv/bin/python -m uvicorn colour_demo.main:app --port 8000
+# 打开 http://127.0.0.1:8000/docs 看 OpenAPI；静态原型在 http://127.0.0.1:8000/demo/
+
+# 测试：黄金值 + Sharma ΔE 参考对 + 接口契约
+.venv/bin/python -m pytest
+```
+
+M1 已实现 9 个端点（面板 00–08 的服务端子集）：
+
+| 端点 | 说明 | 实测 p95（本机热态） |
+| --- | --- | --- |
+| `GET /api/v1/health` | 版本自检（`colour.__version__` 断言 0.4.7） | < 1 ms |
+| `GET /api/v1/meta` | 版本、可选方法枚举、计数、端点清单 | < 1 ms |
+| `GET /api/v1/spaces` | 96 个 RGB 色彩空间（基色/白点/传递函数） | 1.2 ms |
+| `POST /api/v1/convert` | 换算到 14 个核心空间 + 换算链路 | 1.3 ms |
+| `POST /api/v1/chroma` | xy / uv / u′v′、主波长、激发与色度纯度 | 2.6 ms |
+| `POST /api/v1/spectral` | SPD 采样、观察者摘要、黑体光谱 | 3 ms |
+| `POST /api/v1/photometry` | 明度（7 种）/ 亮度 / 白度 / 黄度 | 1.7 ms |
+| `POST /api/v1/delta-e` | 14 种 ΔE 的对称矩阵 + 最近/最远一对 | 2.1 ms |
+| `POST /api/v1/gradient` | N 步插值 + 步长 ΔE 均匀度 | 2.0 ms（101 步） |
+
+错误一律 `{"detail": {"type": ..., "message": ...}}`（方案 6.3）：坏色值指出「第几个」、
+超上限给「最多 12 个」、未知方法列出可选枚举；500 只返回 `trace_id`，不带堆栈。
 
 ## 示例：现在就能跑的 `colour` 代码
 
@@ -107,6 +139,8 @@ colour-demo report --out out
 | Matplotlib | ≥ 3.9 | 色度图、热力图、色板 |
 | NetworkX | ≥ 3.3 | `colour.convert()` 转换图 |
 | SciPy | ≥ 1.11 | `colour.plotting` 的平滑与插值 |
+| FastAPI | ≥ 0.115 | 服务端框架（`/api/v1`） |
+| Uvicorn | ≥ 0.30 | ASGI 服务器，单进程跑起来 |
 
 ## 目录结构
 
@@ -118,12 +152,12 @@ colour-demo/
 │       ├── index.template.html
 │       ├── build_prototype.py   # --batch 1|2|3 / --merge
 │       └── gen/            #   面板定义、块类型、能力目录映射、占位清单
-├── src/colour_demo/        # 待实现：FastAPI 应用
+├── src/colour_demo/        # 已实现（M1）：FastAPI 应用
 │   ├── main.py             #   应用装配：路由、静态、异常、版本断言
-│   ├── api/                #   pydantic 契约与 /api/v1 端点
-│   ├── core/               #   一个面板一个模块（纯函数）
-│   └── web/                #   静态资源：index.html / app.js / styles.css
-├── tests/                  # 待实现：黄金值、Sharma ΔE 参考对、接口契约
+│   ├── api/                #   pydantic 契约（schemas）与 /api/v1 端点（routes）
+│   └── core/               #   一个面板一个模块（纯函数）：convert/chroma/spectral/…
+├── tests/                  # 已实现：黄金值、Sharma ΔE 参考对、接口契约
+│   └── data/               #   sharma2005_delta_e2000.json（取自上游同口径）
 ├── LICENSE                 # MIT
 └── README.md
 ```
@@ -133,7 +167,7 @@ colour-demo/
 - [x] 技术方案（28 面板全量覆盖、API 契约、覆盖自检、分阶段交付、性能与验收）
 - [x] 原型骨架 + 29 页真实数据（00–28，含 7 个前端 SVG chart 块）
 - [x] 补齐原型面板 19–25（M3，`--panel` 逐面板独立进程构建，单面板峰值 126–160 MB）
-- [ ] M1：FastAPI 骨架 + 面板 01–08 端点 + 前端 + 黄金值测试
+- [x] M1：FastAPI 骨架 + 面板 00–08 端点（9 个）+ 黄金值测试（28 项全绿）
 - [ ] M2：色域/色温/质量/LUT/适应/外观/感知/CVD 端点（面板 09–18）
 - [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
 
