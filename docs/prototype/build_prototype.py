@@ -9,6 +9,7 @@
     python docs/prototype/build_prototype.py --batch 1
     python docs/prototype/build_prototype.py --batch 2
     python docs/prototype/build_prototype.py --batch 3
+    python docs/prototype/build_prototype.py --panel notation   # 单跑 19–25 中的一个
     python docs/prototype/build_prototype.py --merge
 """
 
@@ -153,14 +154,56 @@ def save(name: str, payload) -> None:
     print(f"  -> {target.relative_to(HERE.parents[1])} ({target.stat().st_size / 1024:.0f} KB)")
 
 
+BATCH3_PANELS = {
+    "recovery": "19",
+    "characterisation": "20",
+    "notation": "21",
+    "signals": "22",
+    "geometry": "23",
+    "optics": "24",
+    "gallery": "25",
+}
+
+
+def run_single_panel(name: str) -> None:
+    """单跑一个面板：一个进程只跑一个，结果并入 b3.json（可反复执行逐个累积）。
+
+    swap=0 的机器上，这是 19–25 的安全跑法：峰值 = 单个面板 + 解释器基线，
+    不会像 `--batch 3` 那样七个面板连在一个进程里越跑越高。
+    """
+    from gen import panels_engineering as eng
+
+    factory = getattr(eng, f"panel_{name}", None)
+    if factory is None:
+        raise SystemExit(f"找不到 gen.panels_engineering.panel_{name}")
+    panels = run_panels([(name, factory)])
+
+    path = CACHE / "b3.json"
+    existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"panels": []}
+    panel = panels[0]
+    kept = [p for p in existing.get("panels", []) if p["id"] != panel["id"]]
+    kept.append(panel)
+    existing["panels"] = sorted(kept, key=lambda p: p["no"])
+    save("b3", existing)
+    have = [p["no"] for p in existing["panels"]]
+    print(f"  b3 现有面板: {', '.join(have)}（{len(have)}/{len(BATCH3_PANELS)}）")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", choices=["1", "2", "3"], help="分批构建")
+    parser.add_argument(
+        "--panel",
+        choices=sorted(BATCH3_PANELS),
+        help="单跑一个 19–25 面板并并入 b3.json（低内存，可逐个累积）",
+    )
     parser.add_argument("--merge", action="store_true", help="合并各批并写 index.html")
     args = parser.parse_args()
 
     started = time.perf_counter()
-    if args.batch == "1":
+    if args.panel:
+        run_single_panel(args.panel)
+    elif args.batch == "1":
         save("b1", batch1())
     elif args.batch == "2":
         save("b2", batch2())
