@@ -1,0 +1,31 @@
+# colour-demo 部署编排：一条命令拉起 API + 静态原型
+#
+#   docker compose up -d --build      # 构建并后台启动
+#   docker compose ps                 # 看健康状态（健康检查继承自 Dockerfile）
+#   docker compose logs -f app        # 跟日志
+#   docker compose down               # 停止并清理
+#
+# 换端口：COLOUR_DEMO_PORT=9000 docker compose up -d
+
+name: colour-demo
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: colour-demo:latest
+    # 镜像自带 HEALTHCHECK（打 /health），此处继承，不重复写
+    ports:
+      - "${COLOUR_DEMO_PORT:-8000}:8000"
+    environment:
+      # 与镜像默认值一致，显式写出来方便部署时覆盖
+      MPLBACKEND: Agg
+      MPLCONFIGDIR: /tmp/colour-demo-mpl
+    # 服务无状态：不挂卷，容器只读，matplotlib 字体缓存放 tmpfs
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    # 让 uvicorn 成为 PID 1 的子进程，SIGTERM 能正常优雅退出、不留僵尸进程
+    init: true
+    restart: unless-stopped

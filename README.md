@@ -135,11 +135,38 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 联调时抓到过一个真 bug：默认空间表里的 `CAM16 UCS` 在换算图里的节点名是 `cam16ucs`，
 `colour.convert` 直接抛 `NodeNotFound: Target cam16 ucs is not in G`——已加别名映射与回归测试。
 
-## 部署：Docker + CI
+## 部署：Docker Compose + CI
 
-### Docker
+### Docker Compose（推荐）
 
-镜像里只有一个 uvicorn 进程，同时托管 `/api/v1` 与静态原型 `/demo/`：
+```bash
+docker compose up -d --build     # 构建并后台拉起（默认 8000 端口）
+docker compose ps                # STATUS 里看 (healthy)
+docker compose logs -f app       # 跟日志
+docker compose down              # 停止并清理
+
+# 换端口
+COLOUR_DEMO_PORT=9000 docker compose up -d --build
+```
+
+拉起后：
+
+| 地址 | 内容 |
+| --- | --- |
+| <http://127.0.0.1:8000/health> | `{"status":"ok","colour_version":"0.4.7"}` |
+| <http://127.0.0.1:8000/demo/> | 静态原型（自动探测到服务端就切实时模式） |
+| <http://127.0.0.1:8000/docs> | OpenAPI 控制台（面板 28） |
+
+`docker-compose.yml` 里的几个刻意选择：
+
+| 配置 | 为什么 |
+| --- | --- |
+| `read_only: true` + `tmpfs: /tmp:size=64m` | 服务完全无状态，容器根文件系统只读更安全；matplotlib 字体缓存放 tmpfs（实测 28 KB），不写盘也不需要卷 |
+| `init: true` | uvicorn 不再当 PID 1，SIGTERM 能优雅退出，也不会留僵尸进程 |
+| `restart: unless-stopped` | 宿主机重启后自动拉起；`(healthy)` 由镜像自带的 `HEALTHCHECK` 提供，compose 不重复写 |
+| `image: colour-demo:latest` + `build` | 本地 `up --build` 直接构建；也可以先 `docker build -t colour-demo:latest .` 再 `up` |
+
+### Docker（单容器，不用 compose）
 
 ```bash
 docker build -t colour-demo .
@@ -247,6 +274,7 @@ colour-demo/
 ├── tests/                  # 黄金值、Sharma ΔE 参考对、接口契约（75 项）
 │   └── data/               #   sharma2005_delta_e2000.json（取自上游同口径）
 ├── Dockerfile              # 单进程镜像：uvicorn 托管 /api/v1 + /demo/
+├── docker-compose.yml      # 部署编排：只读根 + tmpfs + 健康检查继承
 ├── pyproject.toml          # 依赖与 colour-science==0.4.7 锁定
 ├── LICENSE                 # MIT
 └── README.md
@@ -263,7 +291,7 @@ colour-demo/
 - [x] 前端接 API：22 个面板的实时适配器 + 离线退回静态快照
 - [x] M3：面板 19–25 端点（光谱重建 / 校正 / 记号 / 插值 / 几何 / 光学 / 画册，7 个）
 - [x] M4：能力目录（1284 条 × 归属）、白名单参数化调用、OpenAPI 控制台
-- [x] 部署与 CI：`Dockerfile` + `.github/workflows/ci.yml`（`pytest` + 版本漂移门禁 + 30 端点契约）
+- [x] 部署与 CI：`Dockerfile` + `docker-compose.yml` + `.github/workflows/ci.yml`（`pytest` + 版本漂移门禁 + 30 端点契约）
 - [x] 过程文档入库：`docs/specs/`（方案 + 架构图）、`docs/notes/`（各阶段排查记录）
 
 ## 参考资料

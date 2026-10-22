@@ -67,3 +67,36 @@ Requires-Dist: scipy<2,>=1.13.0; extra == 'optional'
 ## 5. 结果
 
 CI 绿（py3.11 / py3.14 两格），PR #5。仍未做：镜像发布（GHCR）、前端 headless 回归进 CI。
+
+## 6. docker compose（补：部署验证）
+
+`docker-compose.yml` 单服务编排，与 `docker run` 等价但把部署姿势固定下来：
+
+```yaml
+read_only: true          # 服务无状态：容器根只读
+tmpfs: [/tmp:size=64m]   # matplotlib 字体缓存放内存（实测 28 KB）
+init: true               # uvicorn 不当 PID 1，SIGTERM 能优雅退出
+restart: unless-stopped
+```
+
+健康检查不重复写，继承镜像里的 `HEALTHCHECK`；端口 `${COLOUR_DEMO_PORT:-8000}` 可覆盖。
+
+实测（`docker compose up -d --build`）：
+
+| 检查 | 结果 |
+| --- | --- |
+| `docker compose ps` | `Up (healthy)`，`0.0.0.0:8000->8000/tcp` |
+| `/health` | `{"status":"ok","colour_version":"0.4.7"}` |
+| `/demo/` | 200，407539 字节 |
+| `/openapi.json` | 30 个 `/api/` 路径 |
+| `POST /api/v1/plot`（两张图） | 8632 / 13756 字符 base64，只读根 + tmpfs 下正常 |
+| `GET /api/v1/chromaticity.svg` | 200，216269 字节 |
+| `POST /api/v1/catalog/invoke` | 白名单内正常返回；`os.system` → 403 |
+| `docker compose restart` | 10 s 后回 healthy，健康检查重新通过 |
+| `docker compose down` | 容器与 network 干净移除 |
+
+环境坑（本机）：这台机器的 docker 是 OrbStack 的 CLI，`docker compose` 插件装在
+`~/.docker/cli-plugins`；一旦把 `DOCKER_CONFIG` 指到别处（沙箱里必须这么做，`~/.docker`
+不可写）插件就找不到，报 `docker: unknown command: docker compose`。
+解法是给自定义 `DOCKER_CONFIG` 目录建 `cli-plugins` 软链指向真实插件目录。
+这只影响本机折腾，不影响仓库里的文件。
