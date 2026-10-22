@@ -10,6 +10,10 @@ function taskHeader(task) {
     <h1>${esc(task.title)}</h1>
     <p class="lead js-prose">${esc(task.intro)}</p>
     ${renderSteps(task.steps)}
+    <div class="task-share">
+      <button type="button" class="btn-ghost btn-mini" data-share-task>复制本页链接</button>
+      <span class="small muted">链接会带上当前输入</span>
+    </div>
   </div>`;
 }
 
@@ -52,7 +56,49 @@ function taskStateFor(task) {
     if (Array.isArray(preset.state.colors)) state.colors = [...preset.state.colors];
     State.taskState[task.id] = state;
   }
-  return State.taskState[task.id];
+  const state = State.taskState[task.id];
+  // 分享链接把输入放在 hash 的 query 里：`#/task/purity?colors=%23...&illuminant=A`
+  // 每次进入任务页都读一次，保证同一会话里点分享链接也能覆盖旧状态。
+  const params = new URLSearchParams((location.hash.split("?")[1] || ""));
+  task.fields.forEach((field) => {
+    if (!params.has(field.key)) return;
+    const raw = params.get(field.key);
+    if (field.kind === "colors") {
+      const colors = raw.split(",").map(normalizeHex).filter(Boolean);
+      if (colors.length >= (field.min || 1) && colors.length <= (field.max || 12)) state.colors = colors;
+    } else if (field.kind === "number") {
+      const value = Number(raw);
+      if (Number.isFinite(value)) {
+        state[field.key] = Math.max(Number(field.min), Math.min(Number(field.max), Math.round(value)));
+      }
+    } else if (field.kind === "color") {
+      const hex = normalizeHex(raw);
+      if (hex) state[field.key] = hex;
+    } else if (field.kind === "select" || field.kind === "method") {
+      // 色差任务的 task.fields 只放默认算法，完整选项在 LIVE 适配器里
+      const live = typeof LIVE !== "undefined" ? LIVE[task.tool] : null;
+      const liveFields = live ? (typeof live.fields === "function" ? live.fields() : live.fields || []) : [];
+      const liveField = liveFields.find((item) => item.key === field.key);
+      const options = (field.options || []).length > 1 ? field.options : (liveField && liveField.options) || field.options || [];
+      if (options.includes(raw)) state[field.key] = raw;
+    } else if (raw) {
+      state[field.key] = raw;
+    }
+  });
+  return state;
+}
+
+function syncTaskQuery(task, state) {
+  if (State.route.type !== "task" || State.route.id !== task.id) return;
+  const params = new URLSearchParams();
+  task.fields.forEach((field) => {
+    const value = state[field.key];
+    if (value === undefined || value === null || value === "") return;
+    params.set(field.key, Array.isArray(value) ? value.join(",") : String(value));
+  });
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const next = `#/task/${task.id}${suffix}`;
+  if (location.hash !== next) history.replaceState(null, "", next);
 }
 
 function renderTaskPlaceholder(task) {
@@ -143,6 +189,7 @@ async function computeDeltaE(task, state) {
   const result = $("#task-result");
   if (!result) return;
   const sequence = ++deltaESequence;
+  syncTaskQuery(task, state);
   result.setAttribute("aria-busy", "true");
 
   if (!api.ok) {
@@ -215,3 +262,15 @@ function refreshTaskResult() {
   if (task.id === "delta-e") computeDeltaE(task, state);
   else if (typeof computeTask === "function") computeTask(task, state);
 }
+
+/* 复制当前任务的输入链接；状态已同步在 hash 里，刷新/发给别人都能还原 */
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-share-task]");
+  if (!button) return;
+  if (State.route.type !== "task") return;
+  const task = taskById(State.route.id);
+  const state = task && State.taskState[task.id];
+  if (!task || !state) return;
+  syncTaskQuery(task, state);
+  copyText(location.href);
+});

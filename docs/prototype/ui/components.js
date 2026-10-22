@@ -58,10 +58,14 @@ const Verdict = {
 };
 
 function colorRow(hex, index, removable) {
+  const pick = typeof EyeDropper !== "undefined"
+    ? `<button type="button" class="btn-pick" data-color-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
+    : "";
   return `<div class="color-row" data-color-row>
     <input type="color" value="${esc(hex)}" aria-label="颜色 ${index + 1}">
     <input type="text" class="hex-input" value="${esc(hex)}" spellcheck="false"
       autocomplete="off" aria-label="颜色 ${index + 1} 的十六进制值">
+    ${pick}
     <button type="button" class="btn-icon" data-color-remove ${removable ? "" : "disabled"}
       aria-label="删掉颜色 ${index + 1}">×</button>
   </div>`;
@@ -123,6 +127,20 @@ function wireColorList(root, state, options, onChange) {
   };
 
   list.onclick = (event) => {
+    const pick = event.target.closest("[data-color-pick]");
+    if (pick && typeof EyeDropper !== "undefined") {
+      const row = pick.closest("[data-color-row]");
+      new EyeDropper().open().then((result) => {
+        const hex = String(result.sRGBHex || "").toUpperCase();
+        if (!hex) return;
+        row.querySelector('input[type="color"]').value = hex;
+        row.querySelector(".hex-input").value = hex;
+        row.querySelector(".hex-input").classList.remove("is-bad");
+        state.colors = readColors(list);
+        onChange();
+      }).catch(() => { /* 用户取消取色 */ });
+      return;
+    }
     const remove = event.target.closest("[data-color-remove]");
     const add = event.target.closest("[data-color-add]");
     if (remove && !remove.disabled) {

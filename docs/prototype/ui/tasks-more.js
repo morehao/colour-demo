@@ -86,11 +86,15 @@ function renderTaskField(field, state) {
     </div>`;
   }
   if (field.kind === "color") {
+    const pick = typeof EyeDropper !== "undefined"
+      ? `<button type="button" class="btn-pick" data-pick-single="${key}" aria-label="用吸管取色">吸管</button>`
+      : "";
     return `<label class="field">${label}
       <div class="single-color">
         <input type="color" data-field="${key}" value="${esc(value)}" aria-label="${esc(field.label)}">
         <input type="text" class="hex-input" data-field="${key}" value="${esc(value)}" spellcheck="false"
           autocomplete="off" aria-label="${esc(field.label)} 的十六进制值">
+        ${pick}
       </div>
     </label>`;
   }
@@ -171,6 +175,20 @@ function wireTaskPage(task, state) {
     }
   });
 
+  host.addEventListener("click", (event) => {
+    const pick = event.target.closest("[data-pick-single]");
+    if (!pick || typeof EyeDropper === "undefined") return;
+    const row = pick.closest(".single-color");
+    new EyeDropper().open().then((result) => {
+      const hex = normalizeHex(result.sRGBHex);
+      if (!hex) return;
+      row.querySelector('input[type="color"]').value = hex;
+      row.querySelector(".hex-input").value = hex;
+      state[pick.dataset.pickSingle] = hex;
+      schedule();
+    }).catch(() => { /* 用户取消取色 */ });
+  });
+
   $("#preset-host").addEventListener("click", (event) => {
     const button = event.target.closest("[data-preset]");
     if (!button) return;
@@ -179,6 +197,7 @@ function wireTaskPage(task, state) {
     Object.entries(preset.state).forEach(([key, value]) => {
       state[key] = Array.isArray(value) ? [...value] : value;
     });
+    syncTaskQuery(task, state);
     renderTaskPage(task);
   });
 
@@ -196,6 +215,7 @@ async function computeTask(task, state) {
   if (!result) return;
   const sequence = ++taskSequence;
   const preset = findTaskPreset(task, state);
+  syncTaskQuery(task, state);
   result.setAttribute("aria-busy", "true");
 
   if (task.id === "light" && state.source === state.target) {

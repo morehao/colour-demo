@@ -146,6 +146,17 @@ def test_task_field_kinds_are_supported():
             assert field["kind"] in supported, (task["id"], field["key"], field["kind"])
 
 
+def test_task_fields_are_shareable():
+    """任务输入按 key 序列化到 URL；key 必须唯一，选择项必须可还原。"""
+    for task in TASKS:
+        keys = [field["key"] for field in task["fields"]]
+        assert len(keys) == len(set(keys)), task["id"]
+        for field in task["fields"]:
+            if field["kind"] in {"select", "method"}:
+                assert field["options"], (task["id"], field["key"])
+                assert field["value"] in field["options"], (task["id"], field["key"])
+
+
 def test_translate_template_uses_response_fields():
     template = verdicts.VERDICTS["translate"]["template"]
     placeholders = set(re.findall(r"\{(\w+)\}", template))

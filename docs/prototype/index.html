@@ -272,6 +272,10 @@
   .btn-ghost:disabled{opacity:.45;cursor:not-allowed}
   .btn-icon{width:30px;height:30px;border:1px solid var(--line-2);border-radius:7px;background:var(--card);color:var(--ink-3)}
   .btn-icon:disabled{opacity:.4;cursor:not-allowed}
+  .btn-pick{height:30px;padding:0 9px;border:1px solid var(--line-2);border-radius:7px;background:var(--card);color:var(--ink-3);font-size:12px}
+  .btn-pick:hover{border-color:var(--ink-3);color:var(--ink)}
+  .btn-mini{padding:4px 9px;font-size:12px}
+  .task-share{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 16px}
   .preset-row{display:flex;gap:6px;flex-wrap:wrap}
   .preset{padding:5px 10px;border:1px solid var(--line-2);border-radius:999px;background:var(--card);
     font-size:12px;color:var(--ink-2)}
@@ -1005,10 +1009,14 @@ const Verdict = {
 };
 
 function colorRow(hex, index, removable) {
+  const pick = typeof EyeDropper !== "undefined"
+    ? `<button type="button" class="btn-pick" data-color-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
+    : "";
   return `<div class="color-row" data-color-row>
     <input type="color" value="${esc(hex)}" aria-label="颜色 ${index + 1}">
     <input type="text" class="hex-input" value="${esc(hex)}" spellcheck="false"
       autocomplete="off" aria-label="颜色 ${index + 1} 的十六进制值">
+    ${pick}
     <button type="button" class="btn-icon" data-color-remove ${removable ? "" : "disabled"}
       aria-label="删掉颜色 ${index + 1}">×</button>
   </div>`;
@@ -1070,6 +1078,20 @@ function wireColorList(root, state, options, onChange) {
   };
 
   list.onclick = (event) => {
+    const pick = event.target.closest("[data-color-pick]");
+    if (pick && typeof EyeDropper !== "undefined") {
+      const row = pick.closest("[data-color-row]");
+      new EyeDropper().open().then((result) => {
+        const hex = String(result.sRGBHex || "").toUpperCase();
+        if (!hex) return;
+        row.querySelector('input[type="color"]').value = hex;
+        row.querySelector(".hex-input").value = hex;
+        row.querySelector(".hex-input").classList.remove("is-bad");
+        state.colors = readColors(list);
+        onChange();
+      }).catch(() => { /* 用户取消取色 */ });
+      return;
+    }
     const remove = event.target.closest("[data-color-remove]");
     const add = event.target.closest("[data-color-add]");
     if (remove && !remove.disabled) {
@@ -2071,11 +2093,15 @@ function renderTaskField(field, state) {
     </div>`;
   }
   if (field.kind === "color") {
+    const pick = typeof EyeDropper !== "undefined"
+      ? `<button type="button" class="btn-pick" data-pick-single="${key}" aria-label="用吸管取色">吸管</button>`
+      : "";
     return `<label class="field">${label}
       <div class="single-color">
         <input type="color" data-field="${key}" value="${esc(value)}" aria-label="${esc(field.label)}">
         <input type="text" class="hex-input" data-field="${key}" value="${esc(value)}" spellcheck="false"
           autocomplete="off" aria-label="${esc(field.label)} 的十六进制值">
+        ${pick}
       </div>
     </label>`;
   }
@@ -2156,6 +2182,20 @@ function wireTaskPage(task, state) {
     }
   });
 
+  host.addEventListener("click", (event) => {
+    const pick = event.target.closest("[data-pick-single]");
+    if (!pick || typeof EyeDropper === "undefined") return;
+    const row = pick.closest(".single-color");
+    new EyeDropper().open().then((result) => {
+      const hex = normalizeHex(result.sRGBHex);
+      if (!hex) return;
+      row.querySelector('input[type="color"]').value = hex;
+      row.querySelector(".hex-input").value = hex;
+      state[pick.dataset.pickSingle] = hex;
+      schedule();
+    }).catch(() => { /* 用户取消取色 */ });
+  });
+
   $("#preset-host").addEventListener("click", (event) => {
     const button = event.target.closest("[data-preset]");
     if (!button) return;
@@ -2164,6 +2204,7 @@ function wireTaskPage(task, state) {
     Object.entries(preset.state).forEach(([key, value]) => {
       state[key] = Array.isArray(value) ? [...value] : value;
     });
+    syncTaskQuery(task, state);
     renderTaskPage(task);
   });
 
@@ -2181,6 +2222,7 @@ async function computeTask(task, state) {
   if (!result) return;
   const sequence = ++taskSequence;
   const preset = findTaskPreset(task, state);
+  syncTaskQuery(task, state);
   result.setAttribute("aria-busy", "true");
 
   if (task.id === "light" && state.source === state.target) {
@@ -2432,6 +2474,10 @@ function taskHeader(task) {
     <h1>${esc(task.title)}</h1>
     <p class="lead js-prose">${esc(task.intro)}</p>
     ${renderSteps(task.steps)}
+    <div class="task-share">
+      <button type="button" class="btn-ghost btn-mini" data-share-task>复制本页链接</button>
+      <span class="small muted">链接会带上当前输入</span>
+    </div>
   </div>`;
 }
 
@@ -2474,7 +2520,49 @@ function taskStateFor(task) {
     if (Array.isArray(preset.state.colors)) state.colors = [...preset.state.colors];
     State.taskState[task.id] = state;
   }
-  return State.taskState[task.id];
+  const state = State.taskState[task.id];
+  // 分享链接把输入放在 hash 的 query 里：`#/task/purity?colors=%23...&illuminant=A`
+  // 每次进入任务页都读一次，保证同一会话里点分享链接也能覆盖旧状态。
+  const params = new URLSearchParams((location.hash.split("?")[1] || ""));
+  task.fields.forEach((field) => {
+    if (!params.has(field.key)) return;
+    const raw = params.get(field.key);
+    if (field.kind === "colors") {
+      const colors = raw.split(",").map(normalizeHex).filter(Boolean);
+      if (colors.length >= (field.min || 1) && colors.length <= (field.max || 12)) state.colors = colors;
+    } else if (field.kind === "number") {
+      const value = Number(raw);
+      if (Number.isFinite(value)) {
+        state[field.key] = Math.max(Number(field.min), Math.min(Number(field.max), Math.round(value)));
+      }
+    } else if (field.kind === "color") {
+      const hex = normalizeHex(raw);
+      if (hex) state[field.key] = hex;
+    } else if (field.kind === "select" || field.kind === "method") {
+      // 色差任务的 task.fields 只放默认算法，完整选项在 LIVE 适配器里
+      const live = typeof LIVE !== "undefined" ? LIVE[task.tool] : null;
+      const liveFields = live ? (typeof live.fields === "function" ? live.fields() : live.fields || []) : [];
+      const liveField = liveFields.find((item) => item.key === field.key);
+      const options = (field.options || []).length > 1 ? field.options : (liveField && liveField.options) || field.options || [];
+      if (options.includes(raw)) state[field.key] = raw;
+    } else if (raw) {
+      state[field.key] = raw;
+    }
+  });
+  return state;
+}
+
+function syncTaskQuery(task, state) {
+  if (State.route.type !== "task" || State.route.id !== task.id) return;
+  const params = new URLSearchParams();
+  task.fields.forEach((field) => {
+    const value = state[field.key];
+    if (value === undefined || value === null || value === "") return;
+    params.set(field.key, Array.isArray(value) ? value.join(",") : String(value));
+  });
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const next = `#/task/${task.id}${suffix}`;
+  if (location.hash !== next) history.replaceState(null, "", next);
 }
 
 function renderTaskPlaceholder(task) {
@@ -2565,6 +2653,7 @@ async function computeDeltaE(task, state) {
   const result = $("#task-result");
   if (!result) return;
   const sequence = ++deltaESequence;
+  syncTaskQuery(task, state);
   result.setAttribute("aria-busy", "true");
 
   if (!api.ok) {
@@ -2637,6 +2726,18 @@ function refreshTaskResult() {
   if (task.id === "delta-e") computeDeltaE(task, state);
   else if (typeof computeTask === "function") computeTask(task, state);
 }
+
+/* 复制当前任务的输入链接；状态已同步在 hash 里，刷新/发给别人都能还原 */
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-share-task]");
+  if (!button) return;
+  if (State.route.type !== "task") return;
+  const task = taskById(State.route.id);
+  const state = task && State.taskState[task.id];
+  if (!task || !state) return;
+  syncTaskQuery(task, state);
+  copyText(location.href);
+});
 
 
 /* app.js：外壳、首页、参考手册、术语页与启动 */
