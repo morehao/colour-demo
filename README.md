@@ -23,7 +23,7 @@
 
 ## Web 演示
 
-> 原型可直接打开：`docs/prototype/index.html`（单文件、离线可用）。页面里的每个色值、矩阵、曲线都由 **colour-science 0.4.7** 真实计算，由 `docs/prototype/build_prototype.py` 分批生成。**原型按阶段补充**：已有数据的页面正常展示，未完成的页面以「数据待补充 + 补齐清单」占位。
+> 原型可直接打开：`docs/prototype/index.html`（单文件、离线可用）。页面里的每个色值、矩阵、曲线都由 **colour-science 0.4.7** 真实计算，由 `docs/prototype/build_prototype.py` 分批生成。默认是**新手模式**：从首页 6 个任务（鲜艳度 / 色差 / 渐变 / 色弱 / 换灯 / 色号）进入，先给结论再展开原理；右上角可切到**专家模式**，保留原有 29 个参考面板。`?mode=expert` 可强制指定模式，旧链接 `#<面板id>` 会自动跳到 `#/ref/<id>`。29 个参考页在新手模式下也有独立标题、一句解释和「这页的数字怎么读」；专业原文收进「原理与专业参数」，专家模式保持原样。有输入的参考页还带 3 个参数示例：默认看构建期快照，连上本地服务后点示例会实时重算。任务页的输入会同步到链接，刷新或发给别人能还原；支持 EyeDropper 的浏览器会显示「吸管」按钮。专家模式参考面板里的颜色参数也是色块行（取色器 + HEX + 吸管 + 加/删），改完自动重算，不用手打逗号分隔的色号。**原型按阶段补充**：已有数据的页面正常展示，未完成的页面以「数据待补充 + 补齐清单」占位。
 
 覆盖口径（v0.4.7 实测）：25 个子模块 / **1284 条子模块导出** / **439 个顶层名称**，映射为 826 条面板覆盖 + 238 条数据集 + 220 条内部复用，覆盖率 100%（构建脚本断言）。
 
@@ -38,7 +38,7 @@
 | 数据与算法 | 19 光谱重建 · 20 色彩校正与 ACES · 21 记号与解析 · 22 连续信号与插值器 · 23 几何与椭圆拟合 · 24 光学现象与响应动力学 · 25 图表画廊 | 已出 |
 | 元能力 | 26 能力目录（1284 条可搜索） · 27 参数化调用 · 28 API 控制台（29 端点） | 已出 |
 
-技术方案：`.dsh/docs/specs/2026-10-21-colour-web-demo-design.md`（含架构图 `colour-demo-web-architecture.svg`；构建事故与防护见 `.dsh/docs/notes/2026-10-21-build-memory-notes.md`）。技术栈 Python + FastAPI + 原生前端，图表默认由前端 SVG 从数据绘制，仅色度图/色域体/图表画廊用服务端 matplotlib，版本锁定 `colour-science==0.4.7`。
+技术方案：`.dsh/docs/specs/2026-10-21-colour-web-demo-design.md`（含架构图 `colour-demo-web-architecture.svg`；构建事故与防护见 `.dsh/docs/notes/2026-10-21-build-memory-notes.md`）。面向非专业用户的改造方案（任务层 + 双模式）见 [`docs/specs/2026-10-22-beginner-mode-plan.md`](docs/specs/2026-10-22-beginner-mode-plan.md)。技术栈 Python + FastAPI + 原生前端，图表默认由前端 SVG 从数据绘制，仅色度图/色域体/图表画廊用服务端 matplotlib，版本锁定 `colour-science==0.4.7`。
 
 ## CLI 形态（备选）
 
@@ -64,8 +64,13 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 # 不想装包也可以：PYTHONPATH=src .venv/bin/python -m uvicorn colour_demo.main:app --port 8000
 # 打开 http://127.0.0.1:8000/docs 看 OpenAPI；静态原型在 http://127.0.0.1:8000/demo/
 
-# 测试：黄金值 + Sharma ΔE 参考对 + 接口契约
+# 测试：黄金值 + Sharma ΔE 参考对 + 接口契约 + 新手层数据契约
 .venv/bin/python -m pytest
+
+# 重建单文件原型（面板快照用 .tmp/panels 缓存）
+MPLCONFIGDIR=/tmp/mplcache .venv/bin/python docs/prototype/build_prototype.py --merge
+# 发布前严格门禁（文案、术语、任务、体积、旧链接全部硬失败）
+MPLCONFIGDIR=/tmp/mplcache .venv/bin/python docs/prototype/build_prototype.py --merge --strict
 ```
 
 已实现 **30 个端点**，覆盖面板 00–28（全部 29 页）：
@@ -193,7 +198,7 @@ docker run --rm -p 8000:8000 colour-demo
 1. `pip install -e ".[dev]"`
 2. **版本漂移门禁**：`assert_colour_version()` 必须等于 `SUPPORTED_COLOUR_VERSION`，不合格直接 fail
 3. 应用冒烟：导入 `app` 并断言 OpenAPI 里 `/api/` 端点恰好 30 个（防路由静默漏挂）
-4. `pytest`（75 项：黄金值 + Sharma ΔE 参考对 + 接口契约）
+4. `pytest`（93 项：黄金值 + Sharma ΔE 参考对 + 接口契约 + 新手层数据契约）
 
 ## 示例：现在就能跑的 `colour` 代码
 
