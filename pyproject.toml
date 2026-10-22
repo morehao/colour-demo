@@ -12,6 +12,13 @@ license = { text = "MIT" }
 dependencies = [
     # 数值口径锁死：黄金值测试依赖这个版本
     "colour-science==0.4.7",
+    # colour 把 matplotlib / scipy / networkx 列为 optional extra，但本项目的
+    # 出图端点（色度图、画册）、colour.algebra 内部实现、换算图（colour.graph）
+    # 都真的要用；不自己声明，干净环境里 `pip install -e .` 之后直接
+    # ModuleNotFoundError。
+    "matplotlib>=3.9",
+    "scipy>=1.13",
+    "networkx>=3.3",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pydantic>=2.7",

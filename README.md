@@ -53,7 +53,7 @@ Web 演示是主线，同样的能力也可以做成脚本化 CLI。下表是早
 | 色觉障碍模拟 | `colour.blindness.matrix_cvd_Machado2009` | 红色盲 / 绿色盲 / 蓝色盲下的同一组调色板 |
 | 一键报告 | 以上组合 | `out/report.md` + 全部配图 |
 
-## 服务端（M2，可跑）
+## 服务端（M1–M4，可跑）
 
 ```bash
 # 安装（colour-science 版本被锁死，黄金值测试依赖它）
@@ -135,6 +135,39 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 联调时抓到过一个真 bug：默认空间表里的 `CAM16 UCS` 在换算图里的节点名是 `cam16ucs`，
 `colour.convert` 直接抛 `NodeNotFound: Target cam16 ucs is not in G`——已加别名映射与回归测试。
 
+## 部署：Docker + CI
+
+### Docker
+
+镜像里只有一个 uvicorn 进程，同时托管 `/api/v1` 与静态原型 `/demo/`：
+
+```bash
+docker build -t colour-demo .
+docker run --rm -p 8000:8000 colour-demo
+# API 文档 http://127.0.0.1:8000/docs ；原型 http://127.0.0.1:8000/demo/
+# 健康检查 http://127.0.0.1:8000/health → {"status":"ok","colour_version":"0.4.7"}
+```
+
+| 细节 | 做法 |
+| --- | --- |
+| 版本锁 | `colour-science==0.4.7` 只在 `pyproject.toml` 写一次，镜像内不重复写死；启动时 `assert_colour_version()` 不一致直接拒绝启动 |
+| 安装方式 | `pip install -e .`（可编辑）：`main.py` 用 `__file__` 的 `parents[2]` 找 `docs/prototype`，源码树留在 `/app` 才能挂上 `/demo` |
+| 运行用户 | 非 root（uid 10001）；`MPLCONFIGDIR=/tmp/colour-demo-mpl` 保证字体缓存可写 |
+| 出图 | `MPLBACKEND=Agg`，服务端出图统一禁用 `bbox_inches="tight"`（artist 多时会 OOM） |
+| 健康检查 | 容器自带 `HEALTHCHECK` 打 `/health`；`start-period=15s` 留给首次 matplotlib 导入 |
+
+原型页面是构建期产物（单文件 398 KB），镜像只拷贝 `docs/prototype`，不在容器里跑构建。
+
+### CI
+
+`.github/workflows/ci.yml` 在 push 到 `main` 和每个 PR 上跑，矩阵 Python 3.11 / 3.14（对应
+`requires-python = ">=3.11,<3.15"` 的上下界），四步：
+
+1. `pip install -e ".[dev]"`
+2. **版本漂移门禁**：`assert_colour_version()` 必须等于 `SUPPORTED_COLOUR_VERSION`，不合格直接 fail
+3. 应用冒烟：导入 `app` 并断言 OpenAPI 里 `/api/` 端点恰好 30 个（防路由静默漏挂）
+4. `pytest`（75 项：黄金值 + Sharma ΔE 参考对 + 接口契约）
+
 ## 示例：现在就能跑的 `colour` 代码
 
 以下片段只依赖 `colour-science`，不需要本仓库的代码，可直接对照理解后续 CLI 的输入输出。
@@ -155,7 +188,8 @@ print(round(colour.delta_E(lab, red_lab, method="CIE 2000"), 2))   # ≈ 50.06
 ```
 
 > 说明：`colour.convert()` 的自动转换图还需要 `networkx`，绘图还需要 `matplotlib` 与 `scipy`。
-> 按需补装即可：`pip install colour-science matplotlib networkx scipy`。
+> 单独用 `colour-science` 时要按需补装 `pip install colour-science matplotlib networkx scipy`；
+> 本仓库已把它们写进 `pyproject.toml` 的 `dependencies`，装本仓库不用另装。
 
 ## 目标 CLI（待实现）
 
@@ -183,12 +217,12 @@ colour-demo report --out out
 
 | 依赖 | 版本 | 说明 |
 | --- | --- | --- |
-| Python | ≥ 3.11 | `colour-science` 0.4.7 的硬性要求 |
-| colour-science | ≥ 0.4.7 | 全部色彩计算 |
+| Python | ≥ 3.11, < 3.15 | `colour-science` 0.4.7 的硬性要求；CI 跑 3.11 / 3.14 两端 |
+| colour-science | **= 0.4.7** | 全部色彩计算，锁死版本（黄金值依赖它） |
 | NumPy | ≥ 2.0 | 数组与矩阵运算 |
-| Matplotlib | ≥ 3.9 | 色度图、热力图、色板 |
-| NetworkX | ≥ 3.3 | `colour.convert()` 转换图 |
-| SciPy | ≥ 1.11 | `colour.plotting` 的平滑与插值 |
+| Matplotlib | ≥ 3.9 | 色度图、热力图、色板（colour 把它列为 optional，本仓库显式声明） |
+| NetworkX | ≥ 3.3 | `colour.convert()` 转换图、换算图面板 |
+| SciPy | ≥ 1.13 | `colour.plotting` 的平滑与插值 |
 | FastAPI | ≥ 0.115 | 服务端框架（`/api/v1`） |
 | Uvicorn | ≥ 0.30 | ASGI 服务器，单进程跑起来 |
 
@@ -196,18 +230,24 @@ colour-demo report --out out
 
 ```text
 colour-demo/
+├── .github/workflows/      # CI：pytest + 版本漂移门禁 + 30 端点契约
 ├── docs/
-│   └── prototype/          # 已产出：静态原型 + 分阶段构建
-│       ├── index.html      #   单文件原型（29 页，内联数据）
+│   ├── README.md           #   文档索引（方案 / 架构图 / 各阶段笔记）
+│   ├── specs/              #   技术方案 v2 + 架构图 SVG
+│   ├── notes/              #   排查记录：内存事故、传输函数方向 bug、各里程碑口径
+│   └── prototype/          #   静态原型 + 分阶段构建
+│       ├── index.html      #     单文件原型（29 页，内联数据）
 │       ├── index.template.html
 │       ├── build_prototype.py   # --batch 1|2|3 / --merge
-│       └── gen/            #   面板定义、块类型、能力目录映射、占位清单
-├── src/colour_demo/        # 已实现（M1）：FastAPI 应用
+│       └── gen/            #     面板定义、块类型、能力目录映射、占位清单
+├── src/colour_demo/        # FastAPI 应用（M1–M4）
 │   ├── main.py             #   应用装配：路由、静态、异常、版本断言
 │   ├── api/                #   pydantic 契约（schemas）与 /api/v1 端点（routes）
 │   └── core/               #   一个面板一个模块（纯函数）：convert/chroma/spectral/…
-├── tests/                  # 已实现：黄金值、Sharma ΔE 参考对、接口契约
+├── tests/                  # 黄金值、Sharma ΔE 参考对、接口契约（75 项）
 │   └── data/               #   sharma2005_delta_e2000.json（取自上游同口径）
+├── Dockerfile              # 单进程镜像：uvicorn 托管 /api/v1 + /demo/
+├── pyproject.toml          # 依赖与 colour-science==0.4.7 锁定
 ├── LICENSE                 # MIT
 └── README.md
 ```
@@ -223,7 +263,8 @@ colour-demo/
 - [x] 前端接 API：22 个面板的实时适配器 + 离线退回静态快照
 - [x] M3：面板 19–25 端点（光谱重建 / 校正 / 记号 / 插值 / 几何 / 光学 / 画册，7 个）
 - [x] M4：能力目录（1284 条 × 归属）、白名单参数化调用、OpenAPI 控制台
-- [ ] 部署与 CI（Dockerfile / GitHub Actions / 版本漂移门禁）
+- [x] 部署与 CI：`Dockerfile` + `.github/workflows/ci.yml`（`pytest` + 版本漂移门禁 + 30 端点契约）
+- [x] 过程文档入库：`docs/specs/`（方案 + 架构图）、`docs/notes/`（各阶段排查记录）
 
 ## 参考资料
 
