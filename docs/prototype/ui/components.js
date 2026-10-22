@@ -57,102 +57,122 @@ const Verdict = {
   },
 };
 
-function colorRow(hex, index, removable) {
+const HEX_TEXT = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+/* 服务端认识 #RRGGBB / rgb() / hsl() / CSS 关键字；客户端只做「像不像色值」的粗筛 */
+const COLOUR_TEXT = /^(#([0-9a-fA-F]{3,8})|rgba?\([^)]*\)|hsla?\([^)]*\)|[a-zA-Z]{3,24})$/;
+
+function looksLikeColour(value) {
+  return COLOUR_TEXT.test(String(value || "").trim());
+}
+
+/* 一行色块：取色器 + 十六进制文本 + 吸管 + 删除。
+   `prefix` 决定 data-* 属性名（data-color-* / data-live-color-*），
+   让任务页与面板控器共用同一套 DOM 约定而不互相抢事件。 */
+function colorRow(hex, index, options = {}) {
+  const prefix = options.prefix || "data-color";
   const pick = typeof EyeDropper !== "undefined"
-    ? `<button type="button" class="btn-pick" data-color-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
+    ? `<button type="button" class="btn-pick" ${prefix}-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
     : "";
-  return `<div class="color-row" data-color-row>
+  const remove = options.single
+    ? ""
+    : `<button type="button" class="btn-icon" ${prefix}-remove ${options.removable === false ? "disabled" : ""}
+      aria-label="删掉颜色 ${index + 1}">×</button>`;
+  return `<div class="color-row" ${prefix}-row>
     <input type="color" value="${esc(hex)}" aria-label="颜色 ${index + 1}">
     <input type="text" class="hex-input" value="${esc(hex)}" spellcheck="false"
       autocomplete="off" aria-label="颜色 ${index + 1} 的十六进制值">
-    ${pick}
-    <button type="button" class="btn-icon" data-color-remove ${removable ? "" : "disabled"}
-      aria-label="删掉颜色 ${index + 1}">×</button>
+    ${pick}${remove}
   </div>`;
 }
 
 function renderColorList(colors, options = {}) {
+  const prefix = options.prefix || "data-color";
   const min = options.min ?? 2;
   const max = options.max ?? 12;
-  return `<div class="color-list" data-color-list>
-    ${colors.map((hex, index) => colorRow(hex, index, colors.length > min)).join("")}
-    <button type="button" class="btn-ghost" data-color-add ${colors.length >= max ? "disabled" : ""}>+ 加一个颜色</button>
+  const list = (colors.length ? colors : ["#888888"]).slice(0, max);
+  const add = options.add === false
+    ? ""
+    : `<button type="button" class="btn-ghost" ${prefix}-add ${list.length >= max ? "disabled" : ""}>+ 加一个颜色</button>`;
+  const key = options.key ? ` data-live-key="${esc(options.key)}"` : "";
+  return `<div class="color-list" ${prefix}-list${key}>
+    ${list.map((hex, index) => colorRow(hex, index, { prefix, single: options.single, removable: list.length > min })).join("")}
+    ${add}
   </div>`;
 }
 
-function readColors(list) {
-  return Array.from(list.querySelectorAll("[data-color-row]")).map((row) =>
+function readColors(list, prefix = "data-color") {
+  return Array.from(list.querySelectorAll(`[${prefix}-row]`)).map((row) =>
     row.querySelector(".hex-input").value.trim().toUpperCase()
   );
 }
 
-function refreshColorButtons(list, min, max) {
-  const rows = Array.from(list.querySelectorAll("[data-color-row]"));
+function refreshColorButtons(list, min, max, prefix = "data-color") {
+  const rows = Array.from(list.querySelectorAll(`[${prefix}-row]`));
   rows.forEach((row, index) => {
-    row.querySelector("[data-color-remove]").disabled = rows.length <= min;
+    const remove = row.querySelector(`[${prefix}-remove]`);
+    if (remove) remove.disabled = rows.length <= min;
     row.querySelector("input[type=color]").setAttribute("aria-label", `颜色 ${index + 1}`);
   });
-  const add = list.querySelector("[data-color-add]");
+  const add = list.querySelector(`[${prefix}-add]`);
   if (add) add.disabled = rows.length >= max;
 }
 
+/* options.allowAny：允许 rgb()/关键字等 CSS 写法（面板用）；任务页只认 HEX。 */
 function wireColorList(root, state, options, onChange) {
-  const list = root.querySelector("[data-color-list]");
+  const prefix = options.prefix || "data-color";
+  const list = root.querySelector(`[${prefix}-list]`);
   if (!list) return;
   const min = options.min ?? 2;
   const max = options.max ?? 12;
+  const sync = () => {
+    state.colors = readColors(list);
+    onChange();
+  };
 
   list.oninput = (event) => {
-    const row = event.target.closest("[data-color-row]");
+    const row = event.target.closest(`[${prefix}-row]`);
     if (!row) return;
     if (event.target.type === "color") {
-      row.querySelector(".hex-input").value = event.target.value.toUpperCase();
-      row.querySelector(".hex-input").classList.remove("is-bad");
-      state.colors = readColors(list);
-      onChange();
+      const text = row.querySelector(".hex-input");
+      text.value = event.target.value.toUpperCase();
+      text.classList.remove("is-bad");
+      sync();
     } else if (event.target.classList.contains("hex-input")) {
       const value = event.target.value.trim();
-      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value)) {
-        event.target.classList.remove("is-bad");
-        const hex = value.length === 4
-          ? `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`
-          : value;
-        row.querySelector("input[type=color]").value = hex;
-        state.colors = readColors(list);
-        onChange();
-      } else {
-        event.target.classList.add("is-bad");
-      }
+      const valid = options.allowAny ? looksLikeColour(value) : HEX_TEXT.test(value);
+      event.target.classList.toggle("is-bad", !valid);
+      const hex = normalizeHex(value);
+      if (hex) row.querySelector("input[type=color]").value = hex;
+      if (valid) sync();
     }
   };
 
   list.onclick = (event) => {
-    const pick = event.target.closest("[data-color-pick]");
+    const pick = event.target.closest(`[${prefix}-pick]`);
     if (pick && typeof EyeDropper !== "undefined") {
-      const row = pick.closest("[data-color-row]");
+      const row = pick.closest(`[${prefix}-row]`);
       new EyeDropper().open().then((result) => {
-        const hex = String(result.sRGBHex || "").toUpperCase();
+        const hex = normalizeHex(result.sRGBHex);
         if (!hex) return;
         row.querySelector('input[type="color"]').value = hex;
         row.querySelector(".hex-input").value = hex;
         row.querySelector(".hex-input").classList.remove("is-bad");
-        state.colors = readColors(list);
-        onChange();
+        sync();
       }).catch(() => { /* 用户取消取色 */ });
       return;
     }
-    const remove = event.target.closest("[data-color-remove]");
-    const add = event.target.closest("[data-color-add]");
+    const remove = event.target.closest(`[${prefix}-remove]`);
+    const add = event.target.closest(`[${prefix}-add]`);
     if (remove && !remove.disabled) {
-      remove.closest("[data-color-row]").remove();
+      remove.closest(`[${prefix}-row]`).remove();
     } else if (add && !add.disabled) {
-      add.insertAdjacentHTML("beforebegin", colorRow("#888888", list.querySelectorAll("[data-color-row]").length, true));
+      const count = list.querySelectorAll(`[${prefix}-row]`).length;
+      add.insertAdjacentHTML("beforebegin", colorRow("#888888", count, { prefix, removable: true }));
     } else {
       return;
     }
-    refreshColorButtons(list, min, max);
-    state.colors = readColors(list);
-    onChange();
+    refreshColorButtons(list, min, max, prefix);
+    sync();
   };
 }
 

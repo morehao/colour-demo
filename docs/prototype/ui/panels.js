@@ -4,10 +4,14 @@
 function renderControls(panel) {
   const spec = LIVE[panel.id];
   if (spec && api.ok) {
-    return `<div class="controls">${liveFields(spec).map(renderField).join("")}
+    const fields = liveFields(spec);
+    const colorHint = fields.some((field) => field.kind === "colors" || field.kind === "color")
+      ? "颜色改完即算；"
+      : "";
+    return `<div class="controls">${fields.map(renderField).join("")}
       <div class="field field--run"><span>&nbsp;</span><button id="run-live" type="button">调用 API</button></div>
     </div>
-    <div class="ctrl-note" id="live-status">${esc(spec.hint || "改完参数点「调用 API」，结果由服务端现算。")}</div>`;
+    <div class="ctrl-note" id="live-status">${esc(`${colorHint}${spec.hint || "改完参数点「调用 API」，结果由服务端现算。"}`)}</div>`;
   }
   if (!panel.controls.length) return "";
   return `<div class="controls">${panel.controls
@@ -66,6 +70,7 @@ function wirePanel(panel) {
       });
     });
     // 打开面板就先跑一次：这一页的控件不是摆设，数字是现算的
+    wireLiveColors(panel, spec);
     runLive(panel, spec);
     return;
   }

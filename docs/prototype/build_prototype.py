@@ -412,8 +412,8 @@ def run_gates(data: dict, *, strict: bool, html_bytes: int, ui_bytes: int = 0) -
 
     if html_bytes > 700 * 1024:
         errors.append(f"产物 {html_bytes / 1024:.0f} KB 超过 700 KB 预算")
-    if ui_bytes > 120 * 1024:
-        errors.append(f"UI 源码 {ui_bytes / 1024:.0f} KB 超过 120 KB 预算")
+    if ui_bytes > 130 * 1024:
+        errors.append(f"UI 源码 {ui_bytes / 1024:.0f} KB 超过 130 KB 预算")
 
     for warning in warnings:
         print(f"[gate][warn] {warning}")

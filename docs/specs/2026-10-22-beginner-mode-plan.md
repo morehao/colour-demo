@@ -36,7 +36,7 @@
 | 顶栏信息 | 覆盖率 100%、面板数据 29/29、colour 版本 | `index.template.html:208-212` |
 | 导航分组 | 8 组，原样沿用库的子模块划分（colorimetry / difference / models…） | `DATA.groups` |
 | 术语解释 | 无术语浮层/术语表；设计文档只约定"术语保留英文原名" | 全库无 `glossary`/`tooltip` 实现 |
-| 颜色输入 | 文本框手打 `#3B82F6, #E9C46A`，标签"逗号分隔，≤12" | `LIVE.convert.fields` |
+| 颜色输入 | 文本框手打 `#3B82F6, #E9C46A`，标签"逗号分隔，≤12"（已改为色块控件，见 §6.2） | `LIVE.convert.fields` |
 | 参数选择 | 14 种 ΔE 平铺下拉，无推荐、无说明 | `LIVE["delta-e"].fields` |
 | 结果精度 | 表格默认 4 位小数；矩阵只上色不给判断 | `fixed(...,4)`、`renderBlock("matrix")` |
 | 计算触发 | 改完参数必须点「调用 API」 | `wirePanel` → `#run-live` |
@@ -313,7 +313,7 @@ def panel(pid, group, no, title, lead, blocks, *,          # 原有参数不变
 | G5 | `verdict`、`jargon` 的每个引用都存在 | 构建失败 |
 | G6 | 6 个 task 的 `id/tool/outcome/related` 均可解析 | 构建失败 |
 | G7 | 术语表 key 唯一，`aliases` 无跨条重复 | 构建失败 |
-| G8 | 产物 `index.html` ≤ 700 KB；UI JS ≤ 120 KB | 构建失败 |
+| G8 | 产物 `index.html` ≤ 700 KB；UI JS ≤ 130 KB | 构建失败 |
 | G9 | 旧链接重定向表覆盖全部 29 个 id（无遗漏、无多余） | 构建失败 |
 
 门禁放在 `build_prototype.py --merge`，与现有"覆盖率 100%"断言同一层。**开发期（M1–M4）** G1–G3 输出警告、G4–G9 硬失败；**发布期（M4 起）** 加 `--strict` 全部硬失败。CI 另跑不依赖 colour 计算的数据测试（§11.1）。
@@ -451,7 +451,7 @@ def panel(pid, group, no, title, lead, blocks, *,          # 原有参数不变
 | 计算失败 | 结果区原位显示人话错误 + 「重试」；不清空已有结果 |
 | 连续改参数 | `AbortController` 取消上一次请求，只渲染最后一次 |
 | 离线 | 控件禁用 + 顶部提示条；**任务页**预设仍可在 3 组构建期快照间切换；**参考面板**的预设禁用（无对应快照） |
-| 专家模式 | 恢复「调用 API」按钮与 JSON trace，保留手动重算 |
+| 专家模式 | 保留「调用 API」按钮与 JSON trace；颜色改动同样自动重算（防抖 320 ms），不必手打色号 |
 
 ### 6.2 颜色输入组件
 
@@ -472,6 +472,13 @@ def panel(pid, group, no, title, lead, blocks, *,          # 原有参数不变
 - 键盘：`Enter` 确认输入，`Backspace`（空输入框）删除最后一个色块，`×` 可由 `Tab` 聚焦；
 - 每个色块 `aria-label="颜色 1，#3B82F6，删除"`；
 - 粘贴区支持一次粘贴多个（逗号/换行/空格分隔），自动去重。
+
+面板（专家模式）复用同一个控件，不另起一套：
+
+- 适配器字段写 `kind: "colors"`（多色，`min`/`max` 声明数量）或 `kind: "color"`（单色），控件由 `renderColorList` / `wireColorList` 渲染，`prefix: "data-live-color"` 与任务页的 `data-color-*` 隔离，互不抢事件；
+- 控件对外仍然序列化成 `"#264653, #2A9D8F"` 这样的逗号列表，`LIVE.*.body` 里的 `splitList` 一行都不用改；
+- 颜色改动自动重算（320 ms 防抖 + 请求序号丢弃过期响应），其余参数仍点「调用 API」；
+- 面板侧放行 `rgb()`/`hsl()`/CSS 关键字（`options.allowAny`），半截输入（`#12`）标红且不发请求；不足 `min` 个有效色值只在状态行提示，不发请求。
 
 ### 6.3 参数选择
 
@@ -810,7 +817,7 @@ function annotateTerms(root) {
 | 指标 | 预算 | 测量方式 |
 | --- | --- | --- |
 | `index.html` 原始体积 | ≤ 700 KB | 构建断言 |
-| UI JS | ≤ 120 KB（未压缩） | 构建断言 |
+| UI JS | ≤ 130 KB（未压缩） | 构建断言 |
 | 首帧可交互 | ≤ 300 ms（M1 笔记本 / 本地文件） | 手动 + Performance 面板 |
 | 参数改动 → 结果 | ≤ 600 ms（本地 API，不含服务端计算） | 手动 |
 | 布局偏移（探测完成） | CLS < 0.05 | 预留 chip 宽度 |

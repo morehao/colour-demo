@@ -4,7 +4,7 @@
 LIVE.recovery = {
   endpoint: "POST /api/v1/recovery",
   hint: "同一支 RGB 的重建光谱：曲线不同、积分回三刺激值后应当一致（同色异谱）。",
-  fields: [{ key: "colors", label: "输入色", kind: "text", value: "#3B82F6" }],
+  fields: [{ key: "colors", label: "输入色", kind: "color", value: "#3B82F6" }],
   body: (s) => ({ colors: splitList(s.colors) }),
   blocks: (p) => [
     B.chart("重建光谱（横轴波长 nm）",
@@ -37,7 +37,7 @@ LIVE.notation = {
   fields: [
     { key: "munsell", label: "Munsell 记号", kind: "text", value: "5R 5/12" },
     { key: "keyword", label: "CSS 关键字", kind: "text", value: "tomato" },
-    { key: "hex", label: "HEX", kind: "text", value: "#3B82F6" },
+    { key: "hex", label: "HEX", kind: "color", value: "#3B82F6" },
   ],
   body: (s) => ({ munsell: s.munsell, keyword: s.keyword, hex: s.hex }),
   blocks: (p) => [
@@ -159,7 +159,7 @@ LIVE.observers = {
 LIVE.photometry = {
   endpoint: "POST /api/v1/photometry",
   hint: "明度（7 种）/ 亮度 / 白度 / 黄度：注意 Y 走 0–100 域。",
-  fields: [{ key: "colors", label: "颜色", kind: "text", value: "#808080, #3B82F6, #E9C46A" }],
+  fields: [{ key: "colors", label: "颜色", kind: "colors", min: 1, max: 12, value: "#808080, #3B82F6, #E9C46A" }],
   body: (s) => ({ colors: splitList(s.colors) }),
   blocks: (p) => [
     B.table("明度（7 种算法）", ["颜色", "Y（0–100）", ...Object.keys(p.rows[0].lightness)],

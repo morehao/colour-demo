@@ -96,6 +96,11 @@
   .field--run button:hover{background:#33363C}
   .range-row{display:flex;align-items:center;gap:9px}
   .range-row output{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:34px;text-align:right}
+  /* 面板控制区的色块控件：整行铺开，行高与 31px 输入框对齐 */
+  .field--colors{grid-column:1/-1}
+  .controls .color-list{gap:6px;margin-bottom:0}
+  .controls .color-row input[type=color]{width:38px;height:31px}
+  .controls .color-list .btn-ghost{justify-self:start}
   .live-out{display:grid;gap:0;margin:14px 0 0}
   .live-out:empty{display:none}
   .snapshot{margin-top:14px;border-top:1px solid var(--line);padding-top:6px}

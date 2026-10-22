@@ -10,7 +10,7 @@ LIVE.convert = {
   endpoint: "POST /api/v1/convert",
   hint: "改颜色或目标空间 → 服务端重算 14 个核心空间，并给出换算链路。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔，≤12）", kind: "text", value: "#3B82F6, #E9C46A" },
+    { key: "colors", label: "颜色（最多 12 个）", kind: "colors", min: 1, max: 12, value: "#3B82F6, #E9C46A" },
     { key: "target", label: "换算链路目标", kind: "select", options: ["CIE Lab", "Oklab", "CAM16 UCS", "HCL", "Oklch"], value: "CIE Lab" },
   ],
   body: (s) => ({ colors: splitList(s.colors), target: s.target }),
@@ -29,7 +29,7 @@ LIVE.chroma = {
   endpoint: "POST /api/v1/chroma",
   hint: "主波长/纯度依赖光源白点，换光源看看数字怎么变。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "颜色", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "illuminant", label: "光源", kind: "select", options: ["D65", "D50", "A", "C", "FL2"], value: "D65" },
   ],
   body: (s) => ({ colors: splitList(s.colors), illuminant: s.illuminant }),
@@ -44,7 +44,7 @@ LIVE["delta-e"] = {
   endpoint: "POST /api/v1/delta-e",
   hint: "换 ΔE 方法，同一组颜色的数值差可能很大——这就是「不可比」的来源。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔，≥2）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "颜色（至少 2 个）", kind: "colors", min: 2, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "method", label: "方法", kind: "select", options: ["CIE 2000", "CIE 1976", "CIE 1994", "CMC", "CAM02-UCS", "CAM16-UCS"], value: "CIE 2000" },
   ],
   body: (s) => ({ colors: splitList(s.colors), method: s.method }),
@@ -61,8 +61,8 @@ LIVE.gradient = {
   endpoint: "POST /api/v1/gradient",
   hint: "在哪个空间插值，决定了步长是否均匀。",
   fields: [
-    { key: "from", label: "起点", kind: "text", value: "#264653" },
-    { key: "to", label: "终点", kind: "text", value: "#E9C46A" },
+    { key: "from", label: "起点", kind: "color", value: "#264653" },
+    { key: "to", label: "终点", kind: "color", value: "#E9C46A" },
     { key: "space", label: "插值空间", kind: "select", options: ["CIE Lab", "Oklab", "CIE Luv", "sRGB", "CAM16 UCS"], value: "Oklab" },
     { key: "steps", label: "步数", kind: "text", value: "11" },
   ],
@@ -77,7 +77,7 @@ LIVE.transfer = {
   endpoint: "POST /api/v1/transfer",
   hint: "编码曲线 + 往返误差 + YCbCr 码值。",
   fields: [
-    { key: "colors", label: "颜色（YCbCr 取样）", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "取样颜色", kind: "color", value: "#3B82F6" },
     { key: "samples", label: "曲线采样点", kind: "select", options: ["17", "33", "65"], value: "33" },
   ],
   body: (s) => ({ colors: splitList(s.colors), samples: parseInt(s.samples, 10) }),
@@ -102,7 +102,7 @@ LIVE.chromaticity = {
   fields: [
     { key: "diagram", label: "色度图", kind: "select", options: ["CIE 1931", "CIE 1960 UCS", "CIE 1976 UCS"], value: "CIE 1931" },
     { key: "gamuts", label: "叠加色域", kind: "select", options: ["sRGB,Display P3,ITU-R BT.2020", "sRGB", "sRGB,Display P3"], value: "sRGB,Display P3,ITU-R BT.2020" },
-    { key: "colors", label: "样本点", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "样本点", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
   ],
   query: (s) => ({ diagram: s.diagram, gamuts: s.gamuts, colors: splitList(s.colors).join(",") }),
   svgUrl: (s) => `${API_BASE}/api/v1/chromaticity.svg?` + new URLSearchParams(LIVE.chromaticity.query(s)).toString(),
@@ -122,7 +122,7 @@ LIVE["gamut-volume"] = {
   hint: "MonteCarlo 体积（固定种子，可复现）+ 三套边界判据。",
   fields: [
     { key: "samples", label: "采样数", kind: "select", options: ["5000", "20000", "50000"], value: "20000" },
-    { key: "colors", label: "边界判定的样本色", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "边界判定的样本色", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
   ],
   body: (s) => ({ spaces: ["sRGB", "Display P3", "ITU-R BT.2020", "ACES2065-1"], samples: parseInt(s.samples, 10), colors: splitList(s.colors) }),
   blocks: (p) => [
@@ -139,7 +139,7 @@ LIVE.temperature = {
   hint: "换色温：xy 派与 uv 派方法表互不通用，正反解分开看。",
   fields: [
     { key: "cct", label: "色温 K", kind: "select", options: ["2700", "4000", "5000", "6500", "9000"], value: "6500" },
-    { key: "colors", label: "待测颜色（可选）", kind: "text", value: "#FFFFFF" },
+    { key: "colors", label: "待测颜色", kind: "color", value: "#FFFFFF" },
   ],
   body: (s) => ({ cct: parseInt(s.cct, 10), colors: splitList(s.colors) }),
   blocks: (p) => [
@@ -175,7 +175,7 @@ LIVE["image-lut"] = {
   endpoint: "POST /api/v1/lut",
   hint: "3D LUT 的两种插值方式在同一批颜色上的差异。",
   fields: [
-    { key: "colors", label: "取样颜色", kind: "text", value: "#3B82F6, #808080, #E9C46A" },
+    { key: "colors", label: "取样颜色", kind: "colors", min: 1, max: 12, value: "#3B82F6, #808080, #E9C46A" },
     { key: "size", label: "LUT 尺寸", kind: "select", options: ["9", "17", "33"], value: "17" },
     { key: "gains", label: "通道增益 R,G,B", kind: "text", value: "1.2, 0.85, 1.05" },
   ],
@@ -192,7 +192,7 @@ LIVE.adaptation = {
   endpoint: "POST /api/v1/adapt",
   hint: "7 种色适应方法（含需要补观察条件的 4 个）+ vK20 不完全适应。",
   fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "颜色", kind: "color", value: "#3B82F6" },
     { key: "source", label: "源白点", kind: "select", options: ["A", "D50", "D65", "D93", "FL2"], value: "A" },
     { key: "target", label: "目标白点", kind: "select", options: ["D65", "D50", "D93"], value: "D65" },
   ],
@@ -211,7 +211,7 @@ LIVE.appearance = {
   endpoint: "POST /api/v1/appearance",
   hint: "12 个外观模型对同一 XYZ 给出不同的 J/C/h；ZCAM 用 0–1 域，其余多数 0–100。",
   fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "颜色", kind: "color", value: "#3B82F6" },
     { key: "L_A", label: "L_A（cd·m⁻²）", kind: "select", options: ["4.07", "20", "100", "318.31"], value: "4.07" },
     { key: "surround", label: "环绕", kind: "select", options: ["Average", "Dim", "Dark"], value: "Average" },
   ],
@@ -228,7 +228,7 @@ LIVE["phenomena-vision"] = {
   endpoint: "POST /api/v1/phenomena-vision",
   hint: "H-K 效应 + Barten CSF（亮度经瞳孔换成视网膜照度再算）。",
   fields: [
-    { key: "colors", label: "样本颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "样本颜色", kind: "color", value: "#3B82F6" },
     { key: "luminances", label: "亮度 cd·m⁻²（逗号分隔）", kind: "text", value: "10, 100, 1000" },
   ],
   body: (s) => ({ colors: splitList(s.colors), luminances: splitList(s.luminances).map(Number), points: 32 }),
@@ -259,7 +259,7 @@ LIVE.cvd = {
   endpoint: "POST /api/v1/cvd",
   hint: "Machado 2009：类型 + 严重度 → 模拟后的调色板与可区分性指标。",
   fields: [
-    { key: "colors", label: "调色板", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "调色板（至少 2 个）", kind: "colors", min: 2, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "deficiency", label: "类型", kind: "select", options: ["Protanomaly", "Deuteranomaly", "Tritanomaly"], value: "Deuteranomaly" },
     { key: "severity", label: "严重度（0–1）", kind: "range", min: 0, max: 1, step: 0.05, value: "1" },
   ],

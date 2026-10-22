@@ -96,6 +96,11 @@
   .field--run button:hover{background:#33363C}
   .range-row{display:flex;align-items:center;gap:9px}
   .range-row output{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:34px;text-align:right}
+  /* 面板控制区的色块控件：整行铺开，行高与 31px 输入框对齐 */
+  .field--colors{grid-column:1/-1}
+  .controls .color-list{gap:6px;margin-bottom:0}
+  .controls .color-row input[type=color]{width:38px;height:31px}
+  .controls .color-list .btn-ghost{justify-self:start}
   .live-out{display:grid;gap:0;margin:14px 0 0}
   .live-out:empty{display:none}
   .snapshot{margin-top:14px;border-top:1px solid var(--line);padding-top:6px}
@@ -1011,102 +1016,122 @@ const Verdict = {
   },
 };
 
-function colorRow(hex, index, removable) {
+const HEX_TEXT = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+/* 服务端认识 #RRGGBB / rgb() / hsl() / CSS 关键字；客户端只做「像不像色值」的粗筛 */
+const COLOUR_TEXT = /^(#([0-9a-fA-F]{3,8})|rgba?\([^)]*\)|hsla?\([^)]*\)|[a-zA-Z]{3,24})$/;
+
+function looksLikeColour(value) {
+  return COLOUR_TEXT.test(String(value || "").trim());
+}
+
+/* 一行色块：取色器 + 十六进制文本 + 吸管 + 删除。
+   `prefix` 决定 data-* 属性名（data-color-* / data-live-color-*），
+   让任务页与面板控器共用同一套 DOM 约定而不互相抢事件。 */
+function colorRow(hex, index, options = {}) {
+  const prefix = options.prefix || "data-color";
   const pick = typeof EyeDropper !== "undefined"
-    ? `<button type="button" class="btn-pick" data-color-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
+    ? `<button type="button" class="btn-pick" ${prefix}-pick aria-label="用吸管取颜色 ${index + 1}">吸管</button>`
     : "";
-  return `<div class="color-row" data-color-row>
+  const remove = options.single
+    ? ""
+    : `<button type="button" class="btn-icon" ${prefix}-remove ${options.removable === false ? "disabled" : ""}
+      aria-label="删掉颜色 ${index + 1}">×</button>`;
+  return `<div class="color-row" ${prefix}-row>
     <input type="color" value="${esc(hex)}" aria-label="颜色 ${index + 1}">
     <input type="text" class="hex-input" value="${esc(hex)}" spellcheck="false"
       autocomplete="off" aria-label="颜色 ${index + 1} 的十六进制值">
-    ${pick}
-    <button type="button" class="btn-icon" data-color-remove ${removable ? "" : "disabled"}
-      aria-label="删掉颜色 ${index + 1}">×</button>
+    ${pick}${remove}
   </div>`;
 }
 
 function renderColorList(colors, options = {}) {
+  const prefix = options.prefix || "data-color";
   const min = options.min ?? 2;
   const max = options.max ?? 12;
-  return `<div class="color-list" data-color-list>
-    ${colors.map((hex, index) => colorRow(hex, index, colors.length > min)).join("")}
-    <button type="button" class="btn-ghost" data-color-add ${colors.length >= max ? "disabled" : ""}>+ 加一个颜色</button>
+  const list = (colors.length ? colors : ["#888888"]).slice(0, max);
+  const add = options.add === false
+    ? ""
+    : `<button type="button" class="btn-ghost" ${prefix}-add ${list.length >= max ? "disabled" : ""}>+ 加一个颜色</button>`;
+  const key = options.key ? ` data-live-key="${esc(options.key)}"` : "";
+  return `<div class="color-list" ${prefix}-list${key}>
+    ${list.map((hex, index) => colorRow(hex, index, { prefix, single: options.single, removable: list.length > min })).join("")}
+    ${add}
   </div>`;
 }
 
-function readColors(list) {
-  return Array.from(list.querySelectorAll("[data-color-row]")).map((row) =>
+function readColors(list, prefix = "data-color") {
+  return Array.from(list.querySelectorAll(`[${prefix}-row]`)).map((row) =>
     row.querySelector(".hex-input").value.trim().toUpperCase()
   );
 }
 
-function refreshColorButtons(list, min, max) {
-  const rows = Array.from(list.querySelectorAll("[data-color-row]"));
+function refreshColorButtons(list, min, max, prefix = "data-color") {
+  const rows = Array.from(list.querySelectorAll(`[${prefix}-row]`));
   rows.forEach((row, index) => {
-    row.querySelector("[data-color-remove]").disabled = rows.length <= min;
+    const remove = row.querySelector(`[${prefix}-remove]`);
+    if (remove) remove.disabled = rows.length <= min;
     row.querySelector("input[type=color]").setAttribute("aria-label", `颜色 ${index + 1}`);
   });
-  const add = list.querySelector("[data-color-add]");
+  const add = list.querySelector(`[${prefix}-add]`);
   if (add) add.disabled = rows.length >= max;
 }
 
+/* options.allowAny：允许 rgb()/关键字等 CSS 写法（面板用）；任务页只认 HEX。 */
 function wireColorList(root, state, options, onChange) {
-  const list = root.querySelector("[data-color-list]");
+  const prefix = options.prefix || "data-color";
+  const list = root.querySelector(`[${prefix}-list]`);
   if (!list) return;
   const min = options.min ?? 2;
   const max = options.max ?? 12;
+  const sync = () => {
+    state.colors = readColors(list);
+    onChange();
+  };
 
   list.oninput = (event) => {
-    const row = event.target.closest("[data-color-row]");
+    const row = event.target.closest(`[${prefix}-row]`);
     if (!row) return;
     if (event.target.type === "color") {
-      row.querySelector(".hex-input").value = event.target.value.toUpperCase();
-      row.querySelector(".hex-input").classList.remove("is-bad");
-      state.colors = readColors(list);
-      onChange();
+      const text = row.querySelector(".hex-input");
+      text.value = event.target.value.toUpperCase();
+      text.classList.remove("is-bad");
+      sync();
     } else if (event.target.classList.contains("hex-input")) {
       const value = event.target.value.trim();
-      if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value)) {
-        event.target.classList.remove("is-bad");
-        const hex = value.length === 4
-          ? `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`
-          : value;
-        row.querySelector("input[type=color]").value = hex;
-        state.colors = readColors(list);
-        onChange();
-      } else {
-        event.target.classList.add("is-bad");
-      }
+      const valid = options.allowAny ? looksLikeColour(value) : HEX_TEXT.test(value);
+      event.target.classList.toggle("is-bad", !valid);
+      const hex = normalizeHex(value);
+      if (hex) row.querySelector("input[type=color]").value = hex;
+      if (valid) sync();
     }
   };
 
   list.onclick = (event) => {
-    const pick = event.target.closest("[data-color-pick]");
+    const pick = event.target.closest(`[${prefix}-pick]`);
     if (pick && typeof EyeDropper !== "undefined") {
-      const row = pick.closest("[data-color-row]");
+      const row = pick.closest(`[${prefix}-row]`);
       new EyeDropper().open().then((result) => {
-        const hex = String(result.sRGBHex || "").toUpperCase();
+        const hex = normalizeHex(result.sRGBHex);
         if (!hex) return;
         row.querySelector('input[type="color"]').value = hex;
         row.querySelector(".hex-input").value = hex;
         row.querySelector(".hex-input").classList.remove("is-bad");
-        state.colors = readColors(list);
-        onChange();
+        sync();
       }).catch(() => { /* 用户取消取色 */ });
       return;
     }
-    const remove = event.target.closest("[data-color-remove]");
-    const add = event.target.closest("[data-color-add]");
+    const remove = event.target.closest(`[${prefix}-remove]`);
+    const add = event.target.closest(`[${prefix}-add]`);
     if (remove && !remove.disabled) {
-      remove.closest("[data-color-row]").remove();
+      remove.closest(`[${prefix}-row]`).remove();
     } else if (add && !add.disabled) {
-      add.insertAdjacentHTML("beforebegin", colorRow("#888888", list.querySelectorAll("[data-color-row]").length, true));
+      const count = list.querySelectorAll(`[${prefix}-row]`).length;
+      add.insertAdjacentHTML("beforebegin", colorRow("#888888", count, { prefix, removable: true }));
     } else {
       return;
     }
-    refreshColorButtons(list, min, max);
-    state.colors = readColors(list);
-    onChange();
+    refreshColorButtons(list, min, max, prefix);
+    sync();
   };
 }
 
@@ -1161,7 +1186,7 @@ LIVE.convert = {
   endpoint: "POST /api/v1/convert",
   hint: "改颜色或目标空间 → 服务端重算 14 个核心空间，并给出换算链路。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔，≤12）", kind: "text", value: "#3B82F6, #E9C46A" },
+    { key: "colors", label: "颜色（最多 12 个）", kind: "colors", min: 1, max: 12, value: "#3B82F6, #E9C46A" },
     { key: "target", label: "换算链路目标", kind: "select", options: ["CIE Lab", "Oklab", "CAM16 UCS", "HCL", "Oklch"], value: "CIE Lab" },
   ],
   body: (s) => ({ colors: splitList(s.colors), target: s.target }),
@@ -1180,7 +1205,7 @@ LIVE.chroma = {
   endpoint: "POST /api/v1/chroma",
   hint: "主波长/纯度依赖光源白点，换光源看看数字怎么变。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "颜色", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "illuminant", label: "光源", kind: "select", options: ["D65", "D50", "A", "C", "FL2"], value: "D65" },
   ],
   body: (s) => ({ colors: splitList(s.colors), illuminant: s.illuminant }),
@@ -1195,7 +1220,7 @@ LIVE["delta-e"] = {
   endpoint: "POST /api/v1/delta-e",
   hint: "换 ΔE 方法，同一组颜色的数值差可能很大——这就是「不可比」的来源。",
   fields: [
-    { key: "colors", label: "颜色（逗号分隔，≥2）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "颜色（至少 2 个）", kind: "colors", min: 2, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "method", label: "方法", kind: "select", options: ["CIE 2000", "CIE 1976", "CIE 1994", "CMC", "CAM02-UCS", "CAM16-UCS"], value: "CIE 2000" },
   ],
   body: (s) => ({ colors: splitList(s.colors), method: s.method }),
@@ -1212,8 +1237,8 @@ LIVE.gradient = {
   endpoint: "POST /api/v1/gradient",
   hint: "在哪个空间插值，决定了步长是否均匀。",
   fields: [
-    { key: "from", label: "起点", kind: "text", value: "#264653" },
-    { key: "to", label: "终点", kind: "text", value: "#E9C46A" },
+    { key: "from", label: "起点", kind: "color", value: "#264653" },
+    { key: "to", label: "终点", kind: "color", value: "#E9C46A" },
     { key: "space", label: "插值空间", kind: "select", options: ["CIE Lab", "Oklab", "CIE Luv", "sRGB", "CAM16 UCS"], value: "Oklab" },
     { key: "steps", label: "步数", kind: "text", value: "11" },
   ],
@@ -1228,7 +1253,7 @@ LIVE.transfer = {
   endpoint: "POST /api/v1/transfer",
   hint: "编码曲线 + 往返误差 + YCbCr 码值。",
   fields: [
-    { key: "colors", label: "颜色（YCbCr 取样）", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "取样颜色", kind: "color", value: "#3B82F6" },
     { key: "samples", label: "曲线采样点", kind: "select", options: ["17", "33", "65"], value: "33" },
   ],
   body: (s) => ({ colors: splitList(s.colors), samples: parseInt(s.samples, 10) }),
@@ -1253,7 +1278,7 @@ LIVE.chromaticity = {
   fields: [
     { key: "diagram", label: "色度图", kind: "select", options: ["CIE 1931", "CIE 1960 UCS", "CIE 1976 UCS"], value: "CIE 1931" },
     { key: "gamuts", label: "叠加色域", kind: "select", options: ["sRGB,Display P3,ITU-R BT.2020", "sRGB", "sRGB,Display P3"], value: "sRGB,Display P3,ITU-R BT.2020" },
-    { key: "colors", label: "样本点", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "样本点", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
   ],
   query: (s) => ({ diagram: s.diagram, gamuts: s.gamuts, colors: splitList(s.colors).join(",") }),
   svgUrl: (s) => `${API_BASE}/api/v1/chromaticity.svg?` + new URLSearchParams(LIVE.chromaticity.query(s)).toString(),
@@ -1273,7 +1298,7 @@ LIVE["gamut-volume"] = {
   hint: "MonteCarlo 体积（固定种子，可复现）+ 三套边界判据。",
   fields: [
     { key: "samples", label: "采样数", kind: "select", options: ["5000", "20000", "50000"], value: "20000" },
-    { key: "colors", label: "边界判定的样本色", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "边界判定的样本色", kind: "colors", min: 1, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
   ],
   body: (s) => ({ spaces: ["sRGB", "Display P3", "ITU-R BT.2020", "ACES2065-1"], samples: parseInt(s.samples, 10), colors: splitList(s.colors) }),
   blocks: (p) => [
@@ -1290,7 +1315,7 @@ LIVE.temperature = {
   hint: "换色温：xy 派与 uv 派方法表互不通用，正反解分开看。",
   fields: [
     { key: "cct", label: "色温 K", kind: "select", options: ["2700", "4000", "5000", "6500", "9000"], value: "6500" },
-    { key: "colors", label: "待测颜色（可选）", kind: "text", value: "#FFFFFF" },
+    { key: "colors", label: "待测颜色", kind: "color", value: "#FFFFFF" },
   ],
   body: (s) => ({ cct: parseInt(s.cct, 10), colors: splitList(s.colors) }),
   blocks: (p) => [
@@ -1326,7 +1351,7 @@ LIVE["image-lut"] = {
   endpoint: "POST /api/v1/lut",
   hint: "3D LUT 的两种插值方式在同一批颜色上的差异。",
   fields: [
-    { key: "colors", label: "取样颜色", kind: "text", value: "#3B82F6, #808080, #E9C46A" },
+    { key: "colors", label: "取样颜色", kind: "colors", min: 1, max: 12, value: "#3B82F6, #808080, #E9C46A" },
     { key: "size", label: "LUT 尺寸", kind: "select", options: ["9", "17", "33"], value: "17" },
     { key: "gains", label: "通道增益 R,G,B", kind: "text", value: "1.2, 0.85, 1.05" },
   ],
@@ -1343,7 +1368,7 @@ LIVE.adaptation = {
   endpoint: "POST /api/v1/adapt",
   hint: "7 种色适应方法（含需要补观察条件的 4 个）+ vK20 不完全适应。",
   fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "颜色", kind: "color", value: "#3B82F6" },
     { key: "source", label: "源白点", kind: "select", options: ["A", "D50", "D65", "D93", "FL2"], value: "A" },
     { key: "target", label: "目标白点", kind: "select", options: ["D65", "D50", "D93"], value: "D65" },
   ],
@@ -1362,7 +1387,7 @@ LIVE.appearance = {
   endpoint: "POST /api/v1/appearance",
   hint: "12 个外观模型对同一 XYZ 给出不同的 J/C/h；ZCAM 用 0–1 域，其余多数 0–100。",
   fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "颜色", kind: "color", value: "#3B82F6" },
     { key: "L_A", label: "L_A（cd·m⁻²）", kind: "select", options: ["4.07", "20", "100", "318.31"], value: "4.07" },
     { key: "surround", label: "环绕", kind: "select", options: ["Average", "Dim", "Dark"], value: "Average" },
   ],
@@ -1379,7 +1404,7 @@ LIVE["phenomena-vision"] = {
   endpoint: "POST /api/v1/phenomena-vision",
   hint: "H-K 效应 + Barten CSF（亮度经瞳孔换成视网膜照度再算）。",
   fields: [
-    { key: "colors", label: "样本颜色", kind: "text", value: "#3B82F6" },
+    { key: "colors", label: "样本颜色", kind: "color", value: "#3B82F6" },
     { key: "luminances", label: "亮度 cd·m⁻²（逗号分隔）", kind: "text", value: "10, 100, 1000" },
   ],
   body: (s) => ({ colors: splitList(s.colors), luminances: splitList(s.luminances).map(Number), points: 32 }),
@@ -1410,7 +1435,7 @@ LIVE.cvd = {
   endpoint: "POST /api/v1/cvd",
   hint: "Machado 2009：类型 + 严重度 → 模拟后的调色板与可区分性指标。",
   fields: [
-    { key: "colors", label: "调色板", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "colors", label: "调色板（至少 2 个）", kind: "colors", min: 2, max: 12, value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
     { key: "deficiency", label: "类型", kind: "select", options: ["Protanomaly", "Deuteranomaly", "Tritanomaly"], value: "Deuteranomaly" },
     { key: "severity", label: "严重度（0–1）", kind: "range", min: 0, max: 1, step: 0.05, value: "1" },
   ],
@@ -1433,7 +1458,7 @@ LIVE.cvd = {
 LIVE.recovery = {
   endpoint: "POST /api/v1/recovery",
   hint: "同一支 RGB 的重建光谱：曲线不同、积分回三刺激值后应当一致（同色异谱）。",
-  fields: [{ key: "colors", label: "输入色", kind: "text", value: "#3B82F6" }],
+  fields: [{ key: "colors", label: "输入色", kind: "color", value: "#3B82F6" }],
   body: (s) => ({ colors: splitList(s.colors) }),
   blocks: (p) => [
     B.chart("重建光谱（横轴波长 nm）",
@@ -1466,7 +1491,7 @@ LIVE.notation = {
   fields: [
     { key: "munsell", label: "Munsell 记号", kind: "text", value: "5R 5/12" },
     { key: "keyword", label: "CSS 关键字", kind: "text", value: "tomato" },
-    { key: "hex", label: "HEX", kind: "text", value: "#3B82F6" },
+    { key: "hex", label: "HEX", kind: "color", value: "#3B82F6" },
   ],
   body: (s) => ({ munsell: s.munsell, keyword: s.keyword, hex: s.hex }),
   blocks: (p) => [
@@ -1588,7 +1613,7 @@ LIVE.observers = {
 LIVE.photometry = {
   endpoint: "POST /api/v1/photometry",
   hint: "明度（7 种）/ 亮度 / 白度 / 黄度：注意 Y 走 0–100 域。",
-  fields: [{ key: "colors", label: "颜色", kind: "text", value: "#808080, #3B82F6, #E9C46A" }],
+  fields: [{ key: "colors", label: "颜色", kind: "colors", min: 1, max: 12, value: "#808080, #3B82F6, #E9C46A" }],
   body: (s) => ({ colors: splitList(s.colors) }),
   blocks: (p) => [
     B.table("明度（7 种算法）", ["颜色", "Y（0–100）", ...Object.keys(p.rows[0].lightness)],
@@ -1765,8 +1790,24 @@ async function apiCall(spec, state) {
   return { payload, elapsed, request: init.body ? JSON.parse(init.body) : Object.fromEntries(new URLSearchParams(spec.query ? spec.query(state) : {})) };
 }
 
+/* 颜色字段的控件参数：color = 单色，colors = 色块列表（可加可删） */
+function colorFieldOptions(field) {
+  if (field.kind === "color") {
+    return { prefix: "data-live-color", min: 1, max: 1, single: true, add: false, key: field.key };
+  }
+  return { prefix: "data-live-color", min: field.min ?? 2, max: field.max ?? 12, key: field.key };
+}
+
+function renderColorField(field) {
+  const colors = field.kind === "color" ? [String(field.value || "#888888")] : splitList(field.value);
+  // 色块列表占满整行，单色和下拉/文本框并排
+  const wide = field.kind === "colors" ? " field--colors" : "";
+  return `<div class="field${wide}"><span>${esc(field.label)}</span>${renderColorList(colors, colorFieldOptions(field))}</div>`;
+}
+
 function renderField(field) {
   const key = `data-live-key="${field.key}"`;
+  if (field.kind === "colors" || field.kind === "color") return renderColorField(field);
   if (field.kind === "select") {
     return `<div class="field"><span>${esc(field.label)}</span><select ${key}>${field.options.map((option) => `<option${option === field.value ? " selected" : ""}>${esc(option)}</option>`).join("")}</select></div>`;
   }
@@ -1780,13 +1821,55 @@ function liveFields(spec) {
   return typeof spec.fields === "function" ? spec.fields() : spec.fields || [];
 }
 
+function liveFieldValue(element, field) {
+  if (field.kind === "colors" || field.kind === "color") {
+    // 色块控件对外仍然是一个逗号列表，请求映射不用改；
+    // 半截输入（"#12"）或明显不成形的文本直接丢掉，不发请求
+    return Array.from(element.querySelectorAll(".hex-input"))
+      .map((input) => input.value.trim())
+      .filter((value) => looksLikeColour(value));
+  }
+  return element.value;
+}
+
 function collectState(spec) {
   const state = {};
   liveFields(spec).forEach((field) => {
     const element = document.querySelector(`[data-live-key="${field.key}"]`);
-    if (element) state[field.key] = element.value;
+    if (!element) return;
+    const value = liveFieldValue(element, field);
+    state[field.key] = Array.isArray(value) ? value.join(", ") : value;
   });
   return state;
+}
+
+/* 颜色字段至少要几个有效色值；服务端还会再校验，这里只是不让请求白发 */
+function shortColorField(spec, state) {
+  return liveFields(spec).find((field) => {
+    if (field.kind !== "colors" && field.kind !== "color") return false;
+    const need = field.kind === "color" ? 1 : (field.min ?? 2);
+    return splitList(state[field.key]).length < need;
+  });
+}
+
+/* 颜色改动即算（防抖），其余参数仍靠「调用 API」按钮 */
+let liveTimer = null;
+let liveSeq = 0;
+
+function scheduleLiveRun(panel, spec) {
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => runLive(panel, spec), 320);
+}
+
+function wireLiveColors(panel, spec) {
+  liveFields(spec).forEach((field) => {
+    if (field.kind !== "colors" && field.kind !== "color") return;
+    const element = document.querySelector(`[data-live-key="${field.key}"]`);
+    const host = element && element.closest(".field");
+    if (!host) return;
+    const options = { ...colorFieldOptions(field), allowAny: true };
+    wireColorList(host, { colors: [] }, options, () => scheduleLiveRun(panel, spec));
+  });
 }
 
 function renderTrace(spec, state, payload, elapsed, request) {
@@ -1800,7 +1883,16 @@ async function runLive(panel, spec) {
   const out = $("#live-out");
   const status = $("#live-status");
   if (!out) return;
+  clearTimeout(liveTimer);
+  // 连续改颜色会连着发请求：只让最后一次的结果落到页面上
+  const seq = ++liveSeq;
   const state = collectState(spec);
+  const short = shortColorField(spec, state);
+  if (short) {
+    const need = short.kind === "color" ? 1 : (short.min ?? 2);
+    status.textContent = `${short.label}需要 ${need} 个有效色值（#RRGGBB、rgb(…) 或颜色名）；补齐后自动重算。`;
+    return;
+  }
   status.textContent = `调用 ${spec.endpoint} …`;
   try {
     if (spec.dataEndpoint) {
@@ -1808,16 +1900,23 @@ async function runLive(panel, spec) {
       // 其余 GET 适配器（目录/空间图鉴）只有 query，不要走这个分支
       const dataSpec = { endpoint: spec.dataEndpoint, query: spec.query };
       const { payload, elapsed } = await apiCall(dataSpec, state);
+      if (seq !== liveSeq) return;
       out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, null);
       status.textContent = `实时结果 · ${spec.endpoint} + ${spec.dataEndpoint} · colour ${api.version}`;
     } else {
       const { payload, elapsed, request } = await apiCall(spec, state);
+      if (seq !== liveSeq) return;
       out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, request);
       status.textContent = `实时结果 · ${elapsed} ms · ${spec.endpoint} · colour ${api.version}`;
     }
   } catch (error) {
-    out.innerHTML = `<div class="note-box note-warn"><span class="b">调用失败</span><span>${esc(error.message)}</span></div>`;
-    status.textContent = "调用失败：先启动服务端 .venv/bin/python -m uvicorn colour_demo.main:app --port 8000";
+    if (seq !== liveSeq) return;
+    const text = String((error && error.message) || error);
+    out.innerHTML = `<div class="note-box note-warn"><span class="b">调用失败</span><span>${esc(text)}</span></div>`;
+    // 服务端 422 已经说人话了，别再盖成「连不上」
+    status.textContent = /failed to fetch|networkerror|load failed/i.test(text)
+      ? "连不上本地服务：先启动 .venv/bin/python -m uvicorn colour_demo.main:app --port 8000"
+      : `调用失败：${text}`;
   }
 }
 
@@ -1828,10 +1927,14 @@ async function runLive(panel, spec) {
 function renderControls(panel) {
   const spec = LIVE[panel.id];
   if (spec && api.ok) {
-    return `<div class="controls">${liveFields(spec).map(renderField).join("")}
+    const fields = liveFields(spec);
+    const colorHint = fields.some((field) => field.kind === "colors" || field.kind === "color")
+      ? "颜色改完即算；"
+      : "";
+    return `<div class="controls">${fields.map(renderField).join("")}
       <div class="field field--run"><span>&nbsp;</span><button id="run-live" type="button">调用 API</button></div>
     </div>
-    <div class="ctrl-note" id="live-status">${esc(spec.hint || "改完参数点「调用 API」，结果由服务端现算。")}</div>`;
+    <div class="ctrl-note" id="live-status">${esc(`${colorHint}${spec.hint || "改完参数点「调用 API」，结果由服务端现算。"}`)}</div>`;
   }
   if (!panel.controls.length) return "";
   return `<div class="controls">${panel.controls
@@ -1890,6 +1993,7 @@ function wirePanel(panel) {
       });
     });
     // 打开面板就先跑一次：这一页的控件不是摆设，数字是现算的
+    wireLiveColors(panel, spec);
     runLive(panel, spec);
     return;
   }
