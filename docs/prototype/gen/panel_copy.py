@@ -40,7 +40,7 @@ PANEL_COPY: dict[str, dict] = {
         "verdict_extra": "三组里最鲜艳的是 #3B82F6，最接近 473 nm 的单色光。",
         "title_plain": "这个颜色够鲜艳吗",
         "question": "它离白灰有多远、最接近哪个单色光？",
-        "plain": "鲜艳度看颜色离白灰有多远；数值越高，越接近光谱里的单色光。",
+        "plain": "鲜艳度看颜色离白灰有多远；数值越高，越接近光谱里的单色光，也越醒目。",
         "why": "挑强调色、判断颜色够不够醒目时。",
         "jargon": ["purity", "dominant-wavelength", "d65"],
         "read": [
@@ -66,7 +66,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "image",
         "title_plain": "这块白到底有多白",
         "question": "白纸、屏幕白、墙白怎么比？",
-        "plain": "白色也有亮度差别；把几种白放在一起，能看出谁更亮、谁偏灰。",
+        "plain": "白色也有亮度差别；把几种白放在一起，能看出谁更亮、谁更灰、谁偏黄。",
         "why": "选纸张、调屏幕亮度、比较涂料时。",
         "jargon": ["lightness", "linear-light", "gamma"],
         "read": [
@@ -98,7 +98,7 @@ PANEL_COPY: dict[str, dict] = {
         "verdict_extra": "CAM16-UCS 的步长最均匀（约 1.4×）；sRGB 约 3.0×，中段最挤。",
         "title_plain": "渐变为什么中间发灰",
         "question": "怎么让过渡更顺？",
-        "plain": "同一个起点和终点，换一种过渡方式，中间那段会完全不同。",
+        "plain": "同一个起点和终点，换一种过渡方式，中间那段会完全不同，甚至发灰。",
         "why": "做海报渐变、界面背景、数据可视化色带时。",
         "jargon": ["oklab", "cie-lab", "delta-e"],
         "read": [
@@ -166,7 +166,7 @@ PANEL_COPY: dict[str, dict] = {
         "verdict_extra": "D65 反解约 6505 K，落在「日光」这一段。",
         "title_plain": "这盏灯是暖还是冷",
         "question": "6500K 到底是什么感觉？",
-        "plain": "色温用开尔文表示光的冷暖；数字越低越偏黄，越高越偏蓝。",
+        "plain": "色温用开尔文表示光的冷暖；数字越低越偏黄，越高越偏蓝，6500K 接近日光。",
         "why": "买灯泡、布置拍摄灯光、判断画面氛围时。",
         "jargon": ["cct", "planckian-locus", "duv"],
         "read": [
@@ -182,7 +182,7 @@ PANEL_COPY: dict[str, dict] = {
         "verdict_tone": "warn",
         "title_plain": "这盏灯的显色好不好",
         "question": "同款衣服为什么店里家里不一样？",
-        "plain": "显色指数衡量灯光还原颜色的能力；几个口径可能给出不同答案。",
+        "plain": "显色指数衡量灯光还原颜色的能力；几个口径可能给出不同答案，别只看一个。",
         "why": "买灯、布展、拍产品图时。",
         "jargon": ["cri", "tm30", "spd"],
         "read": [
@@ -263,7 +263,7 @@ PANEL_COPY: dict[str, dict] = {
         "verdict_extra": "三种类型里绿色弱最吃紧：相邻两块最小只剩 ΔE 6.0，快速浏览容易混。",
         "title_plain": "色弱的人能分清这套配色吗",
         "question": "哪些颜色会糊在一起？",
-        "plain": "把配色模拟成色弱视角，看看相邻颜色是否还分得开。",
+        "plain": "把配色模拟成色弱视角，看看相邻颜色是否还分得开，哪些会糊在一起。",
         "why": "做无障碍设计、检查图表配色时。",
         "jargon": ["cvd", "delta-e"],
         "read": [
@@ -276,7 +276,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "chart",
         "title_plain": "一个 RGB 能还原多少光谱",
         "question": "为什么同色异谱存在？",
-        "plain": "同一个颜色可能来自不同的光谱组合；这里比较几种还原办法。",
+        "plain": "同一个颜色可能来自不同的光谱组合；这里比较几种还原办法，看它们差在哪。",
         "why": "做光谱研究、理解同色异谱时。",
         "jargon": ["metamerism", "spd", "reflectance"],
         "read": [
@@ -289,7 +289,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "strips",
         "title_plain": "相机偏色怎么校",
         "question": "24 色卡怎么用？",
-        "plain": "用已知色卡反推相机的颜色偏差，再把偏差校正回去。",
+        "plain": "用已知色卡反推相机的颜色偏差，再把偏差校正回去；换镜头后要重做。",
         "why": "拍产品、做色彩管理时。",
         "jargon": ["spd", "reflectance", "cie-lab"],
         "read": [
@@ -317,7 +317,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "chart",
         "title_plain": "光谱中间怎么补",
         "question": "补出来的值会改变结论吗？",
-        "plain": "测量点之间要补值；不同补法会得到不同曲线，也可能改变结论。",
+        "plain": "测量点之间要补值；不同补法会得到不同曲线，也可能改变最终结论。",
         "why": "处理光谱数据、比较测量精度时。",
         "jargon": ["spd", "metamerism"],
         "read": [
@@ -343,7 +343,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "chart",
         "title_plain": "肥皂泡为什么是彩色的",
         "question": "薄膜厚度怎么影响颜色？",
-        "plain": "薄膜上下表面的光互相叠加，某些波长被增强，就出现了彩色。",
+        "plain": "薄膜上下表面的光互相叠加，某些波长被增强，就出现了彩色条纹。",
         "why": "理解光学干涉、解释自然现象时。",
         "jargon": ["spd", "reflectance"],
         "read": [
@@ -356,7 +356,7 @@ PANEL_COPY: dict[str, dict] = {
         "preview": "image",
         "title_plain": "现成的图有哪些",
         "question": "不想自己画图怎么办？",
-        "plain": "这里收集了常用的颜色图表；可以直接看样式，也可以照着改。",
+        "plain": "这里收集了常用的颜色图表；可以直接看样式，也可以照着改参数。",
         "why": "做报告、找示意图、比较图表风格时。",
         "jargon": ["chromaticity-diagram", "gamut"],
         "read": [

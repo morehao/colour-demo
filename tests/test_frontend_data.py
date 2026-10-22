@@ -93,6 +93,7 @@ def test_panel_copy_covers_all_panels():
         errors, warnings = copy_lint.validate_panel_copy(panel)
         assert not errors, (panel_id, errors)
         assert not warnings, (panel_id, warnings)
+        assert 30 <= len(copy["plain"]) <= 80, (panel_id, len(copy["plain"]))
         assert len(copy["read"]) == 3, panel_id
         assert copy["preview"] in {"chain", "convert", "kv", "table", "swatches", "strips", "image", "chart", "stats"}, panel_id
         for term in copy["jargon"]:

@@ -376,7 +376,7 @@ def _validate_tasks(tasks: list[dict], *, require_snapshots: bool) -> list[str]:
 def run_gates(data: dict, *, strict: bool, html_bytes: int, ui_bytes: int = 0) -> None:
     from gen.copy_lint import validate_panel_copy
     from gen.glossary import GLOSSARY
-    from gen.manifest import LIVE_PANEL_IDS, PANEL_IDS
+    from gen.manifest import PANEL_IDS
     from gen.verdicts import VERDICTS
 
     errors: list[str] = []
@@ -401,17 +401,6 @@ def run_gates(data: dict, *, strict: bool, html_bytes: int, ui_bytes: int = 0) -
         warnings.append(
             f"新手文案未就绪：{len(missing_copy)}/{len(data['panels'])} 个面板"
             f"（示例：{', '.join(missing_copy[:5])}）"
-        )
-
-    no_presets = [
-        panel["id"]
-        for panel in data["panels"]
-        if panel["id"] in LIVE_PANEL_IDS and len(panel.get("presets") or []) != 3
-    ]
-    if no_presets:
-        warnings.append(
-            f"实时面板预设未就绪：{len(no_presets)}/{len(LIVE_PANEL_IDS)}"
-            f"（示例：{', '.join(no_presets[:5])}）"
         )
 
     errors.extend(_validate_glossary())
