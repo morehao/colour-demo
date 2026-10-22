@@ -38,7 +38,7 @@
 | 数据与算法 | 19 光谱重建 · 20 色彩校正与 ACES · 21 记号与解析 · 22 连续信号与插值器 · 23 几何与椭圆拟合 · 24 光学现象与响应动力学 · 25 图表画廊 | 已出 |
 | 元能力 | 26 能力目录（1284 条可搜索） · 27 参数化调用 · 28 API 控制台（29 端点） | 已出 |
 
-技术方案：`.dsh/docs/specs/2026-10-21-colour-web-demo-design.md`（含架构图 `colour-demo-web-architecture.svg`；构建事故与防护见 `.dsh/docs/notes/2026-10-21-build-memory-notes.md`）。技术栈 Python + FastAPI + 原生前端，图表默认由前端 SVG 从数据绘制，仅色度图/色域体/图表画廊用服务端 matplotlib，版本锁定 `colour-science==0.4.7`。
+技术方案：`.dsh/docs/specs/2026-10-21-colour-web-demo-design.md`（含架构图 `colour-demo-web-architecture.svg`；构建事故与防护见 `.dsh/docs/notes/2026-10-21-build-memory-notes.md`）。面向非专业用户的改造方案（任务层 + 双模式）见 [`docs/specs/2026-10-22-beginner-mode-plan.md`](docs/specs/2026-10-22-beginner-mode-plan.md)。技术栈 Python + FastAPI + 原生前端，图表默认由前端 SVG 从数据绘制，仅色度图/色域体/图表画廊用服务端 matplotlib，版本锁定 `colour-science==0.4.7`。
 
 ## CLI 形态（备选）
 

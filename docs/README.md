@@ -5,6 +5,7 @@
 | 产出 | 路径 | 说明 |
 | --- | --- | --- |
 | 技术方案（v2，定稿） | [`specs/2026-10-21-colour-web-demo-design.md`](specs/2026-10-21-colour-web-demo-design.md) | 28 功能面板 + 概览的全量设计、API 契约、覆盖自检口径、M1–M4 分阶段交付 |
+| 小白友好改造（终局） | [`specs/2026-10-22-beginner-mode-plan.md`](specs/2026-10-22-beginner-mode-plan.md) | 任务层 + 双模式 + 数据化文案/阈值：IA、数据模型、6 个任务页、29 面板口径、构建门禁与排期 |
 | 架构图 | [`specs/colour-demo-web-architecture.svg`](specs/colour-demo-web-architecture.svg) | 四层结构（前端 / API / core / colour）+ 缓存、能力目录、CI |
 | 静态原型 | [`prototype/index.html`](prototype/index.html) | 29 页单文件原型，双击可开；构建脚本 `prototype/build_prototype.py` |
 
