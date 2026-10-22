@@ -1,0 +1,70 @@
+name: CI
+
+# 方案 12 版本漂移门禁：CI 只跑「测试 + 版本断言」两件事。
+# 数值口径由 colour-science==0.4.7 锁死，版本一旦漂移黄金值测试失效，
+# 所以在跑 pytest 之前先单独断言 colour.__version__。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 出图统一走无头后端（服务端禁 bbox_inches="tight"，见方案 10.4）
+  MPLBACKEND: Agg
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # requires-python = ">=3.11,<3.15" 的上下界
+        python-version: ["3.11", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Version drift gate (colour-science == 0.4.7)
+        run: |
+          python - <<'PY'
+          from colour_demo import SUPPORTED_COLOUR_VERSION, assert_colour_version
+
+          got = assert_colour_version()
+          assert got == SUPPORTED_COLOUR_VERSION, (got, SUPPORTED_COLOUR_VERSION)
+          print(f"colour-science {got} == pinned {SUPPORTED_COLOUR_VERSION}")
+          PY
+
+      - name: App smoke (import + endpoint contract)
+        run: |
+          python - <<'PY'
+          from colour_demo.main import app
+
+          # 走 OpenAPI schema 而不是 app.routes：APIRouter 是 _IncludedRouter 嵌套对象，
+          # 直接遍历 routes 数不到子路由，会漏报。
+          api = {p for p in app.openapi()["paths"] if p.startswith("/api/")}
+          print(f"{len(api)} API paths mounted")
+          assert len(api) == 30, f"端点契约应为 30 个，实际 {len(api)}"
+          PY
+
+      - name: pytest
+        run: python -m pytest -q
