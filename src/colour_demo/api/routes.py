@@ -15,13 +15,20 @@ from ..core import (
     chromaticity,
     convert,
     corresponding,
+    correction,
     cvd,
     delta_e,
+    gallery,
+    geometry,
     gradient,
+    interpolate,
     lut,
+    notation,
+    optics,
     phenomena,
     photometry,
     quality,
+    recovery,
     spaces,
     spectral,
     temperature,
@@ -31,16 +38,23 @@ from ..core import (
 from .schemas import (
     AdaptRequest,
     AppearanceRequest,
+    CorrectionRequest,
     ChromaRequest,
     ConvertRequest,
     CorrespondingRequest,
     CvdRequest,
     DeltaERequest,
+    GeometryRequest,
     GradientRequest,
+    InterpolateRequest,
     LutRequest,
+    NotationRequest,
+    OpticsRequest,
     PhenomenaRequest,
     PhotometryRequest,
+    PlotRequest,
     QualityRequest,
+    RecoveryRequest,
     SpectralRequest,
     TemperatureRequest,
     TransferRequest,
@@ -103,6 +117,10 @@ def meta() -> dict:
                 "cqs": list(quality.CQS_METHODS),
                 "fidelity": list(quality.FIDELITY_METHODS),
             },
+            "recovery": list(recovery.METHODS),
+            "correction": list(correction.METHODS),
+            "interpolators": list(interpolate.INTERPOLATORS),
+            "plots": list(gallery.PLOTS),
         },
         "counts": {
             "rgb_colourspaces": len(colour.RGB_COLOURSPACES),
@@ -134,6 +152,13 @@ def meta() -> dict:
             "POST /api/v1/phenomena-vision",
             "POST /api/v1/corresponding",
             "POST /api/v1/cvd",
+            "POST /api/v1/recovery",
+            "POST /api/v1/correction",
+            "POST /api/v1/notation",
+            "POST /api/v1/interpolate",
+            "POST /api/v1/geometry",
+            "POST /api/v1/optics",
+            "POST /api/v1/plot",
         ],
     }
 
@@ -319,3 +344,59 @@ def post_cvd(payload: CvdRequest) -> dict:
         severity=payload.severity,
         severities=payload.severities,
     )
+
+
+# --------------------------------------------------------------------------- #
+# M3：面板 19–25
+# --------------------------------------------------------------------------- #
+@router.post("/recovery")
+def post_recovery(payload: RecoveryRequest) -> dict:
+    return recovery.recovery_data(colours=payload.colors, methods=payload.methods, step=payload.step)
+
+
+@router.post("/correction")
+def post_correction(payload: CorrectionRequest) -> dict:
+    return correction.correction_data(methods=payload.methods)
+
+
+@router.post("/notation")
+def post_notation(payload: NotationRequest) -> dict:
+    return notation.notation_data(
+        munsell=payload.munsell,
+        keyword=payload.keyword,
+        hex_value=payload.hex_color,
+        value_y=payload.value_y,
+    )
+
+
+@router.post("/interpolate")
+def post_interpolate(payload: InterpolateRequest) -> dict:
+    return interpolate.interpolate_data(
+        illuminant=payload.illuminant,
+        coarse_step=payload.coarse_step,
+        target_step=payload.target_step,
+        start=payload.start,
+        end=payload.end,
+        interpolators=payload.interpolators,
+    )
+
+
+@router.post("/geometry")
+def post_geometry(payload: GeometryRequest) -> dict:
+    return geometry.geometry_data(ellipse_index=payload.ellipse_index, include_all=payload.include_all)
+
+
+@router.post("/optics")
+def post_optics(payload: OpticsRequest) -> dict:
+    return optics.optics_data(
+        thicknesses=payload.thicknesses,
+        start=payload.start,
+        end=payload.end,
+        step=payload.step,
+        substrate_points=payload.substrate_points,
+    )
+
+
+@router.post("/plot")
+def post_plot(payload: PlotRequest) -> dict:
+    return gallery.gallery_data(names=payload.plots)

@@ -141,6 +141,129 @@ def test_gradient_contract_and_step_limits():
     _assert_error(client.post("/api/v1/gradient", json={"from": "#000000", "to": "#FFFFFF", "steps": 500}), 422, "value_error")
 
 
+# --------------------------------------------------------------------------- #
+# M3（面板 19–25）：7 个新端点
+# --------------------------------------------------------------------------- #
+def test_recovery_contract():
+    body = client.post("/api/v1/recovery", json={"colors": ["#3B82F6"]}).json()
+    rows = {row["method"]: row for row in body["rows"]}
+    assert set(rows) == {"Smits 1999", "Mallett 2019", "Jakob 2019", "Meng 2015"}
+    # XYZ 派重建必须几乎精确回到原色
+    assert rows["Jakob 2019"]["delta_e"] < 0.05
+    assert rows["Meng 2015"]["delta_e"] < 0.05
+    # Smits 用平滑基函数，蓝端残差约 1 个 ΔE——这是方法局限，不是实现误差
+    assert 0.5 < rows["Smits 1999"]["delta_e"] < 3.0
+    assert len(body["curves"]) == 4
+
+
+def test_recovery_rejects_bad_step_and_method():
+    _assert_error(client.post("/api/v1/recovery", json={"step": 3}), 422, "value_error")
+    _assert_error(client.post("/api/v1/recovery", json={"methods": ["Nope"]}), 422, "value_error")
+
+
+def test_correction_contract():
+    body = client.post("/api/v1/correction", json={}).json()
+    stages = {stage["stage"]: stage for stage in body["stages"]}
+    before = body["stages"][0]
+    assert before["mean_delta_e"] > 10  # A 光源下拍摄，偏色明显
+    # 三种方法都必须把平均 ΔE 压下来
+    for stage in body["stages"][1:]:
+        assert stage["mean_delta_e"] < before["mean_delta_e"]
+        assert len(stage["swatches"]) == 12
+    assert body["best"]["mean_delta_e"] < 3
+    assert len(body["matrices"]) == 3
+    assert len(stages) == 4
+
+
+def test_notation_contract():
+    body = client.post("/api/v1/notation", json={"hex": "#3B82F6"}).json()
+    assert body["munsell"]["roundtrip_matches"] is True
+    assert body["munsell"]["back"].startswith("5")
+    assert body["keyword"]["hex"] == "#FF6347"  # tomato
+    assert body["hex"]["canonical"] == "#3B82F6"
+    assert len(body["value_methods"]) == 7
+    assert body["counts"]["css_basic"] == 16
+    assert len(body["css_basic"]) == 16
+
+
+def test_notation_rejects_bad_inputs():
+    _assert_error(client.post("/api/v1/notation", json={"keyword": "not-a-css-colour"}), 422, "value_error")
+    _assert_error(client.post("/api/v1/notation", json={"value_y": 200}), 422, "value_error")
+
+
+def test_interpolate_contract():
+    body = client.post("/api/v1/interpolate", json={}).json()
+    rows = {row["interpolator"]: row for row in body["rows"]}
+    assert set(rows) == {"Linear", "Sprague", "PCHIP", "Cubic Spline"}
+    # 20 nm 采样漏掉汞灯尖线 → 各方法误差都在同一量级，但过冲不同
+    assert rows["Sprague"]["max_abs_error"] > 5
+    assert rows["Sprague"]["negative_points"] > 0  # Sprague 会过冲到负功率
+    assert rows["Linear"]["negative_points"] == 0
+    # 非线性合成表上两种 LUT 插值必须有差异（恒等表上必然为 0）
+    assert body["lut"]["max_gap_codes"] > 0.5
+    assert len(body["curves"]["residuals"]) == 4
+
+
+def test_interpolate_rejects_bad_steps():
+    _assert_error(client.post("/api/v1/interpolate", json={"coarse_step": 5, "target_step": 5}), 422, "value_error")
+    _assert_error(client.post("/api/v1/interpolate", json={"interpolators": ["Nope"]}), 422, "value_error")
+
+
+def test_geometry_contract():
+    body = client.post("/api/v1/geometry", json={}).json()
+    compare = {row["parameter"]: row for row in body["compare"]}
+    assert compare["中心 x₀"]["fitted"] == pytest.approx(compare["中心 x₀"]["original"], abs=1e-6)
+    # 长短半轴互换、θ 差约 90°（标准形约定），这是拟合正确而非误差
+    # 原始数据只给到 4 位有效数字（a=2.1×10⁻³），拟合值精度更高，所以按绝对误差比
+    assert compare["半轴 1"]["fitted"] == pytest.approx(compare["半轴 1"]["original"], abs=1e-5)
+    assert 85 < abs(compare["旋转角 θ°"]["fitted"] - compare["旋转角 θ°"]["original"]) < 95
+    assert all(abs(float(row["residual"])) < 1e-6 for row in body["residuals"])
+    assert body["segments"][0]["point"] == pytest.approx([0.5, 0.5])
+    assert body["segments"][1]["parallel"] is True
+    assert len(body["ellipses"]) == 25
+
+
+def test_geometry_rejects_bad_index():
+    _assert_error(client.post("/api/v1/geometry", json={"ellipse_index": 99}), 422, "value_error")
+
+
+def test_optics_contract():
+    body = client.post("/api/v1/optics", json={}).json()
+    # 无损介质：R + T ≈ 1，是传输矩阵实现的健全性检查
+    for row in body["film"]["rows"]:
+        assert row["rt_sum_mean"] == pytest.approx(1.0, abs=1e-3)
+    # 瑞利散射：实测比纯 1/λ⁴ 高几个百分点
+    for row in body["rayleigh"]["rows"]:
+        assert 0 < row["deviation_pct"] < 10
+    # Abebe 2017 的 b_m<1 把速率整体抬高
+    for row in body["kinetics"]["rows"]:
+        assert row["abebe"] > row["michaelis"]
+
+
+def test_plot_contract():
+    body = client.post("/api/v1/plot", json={"plots": ["visible-spectrum"]}).json()
+    assert len(body["plots"]) == 1
+    plot = body["plots"][0]
+    assert plot["media_type"] == "image/png"
+    assert len(plot["png_base64"]) > 1000  # 真的编码出位图了
+    assert body["counts"]["plot_functions"] > 50
+    assert body["groups"]
+
+    _assert_error(client.post("/api/v1/plot", json={"plots": ["nope"]}), 422, "value_error")
+    _assert_error(client.post("/api/v1/plot", json={"plots": ["visible-spectrum"] * 5}), 422, "value_error")
+
+
+def test_cvd_grey_is_invariant():
+    """方向性判断：CVD 矩阵保持消色差轴，灰色模拟后仍是灰色。
+
+    `eotf_sRGB`（码值→线性）与 `eotf_inverse_sRGB`（线性→码值）写反不会报错，
+    但会多做一次编码、把灰色压暗——这条测试就是钉住方向的。
+    """
+
+    body = client.post("/api/v1/cvd", json={"colors": ["#808080"], "severity": 1.0}).json()
+    assert body["rows"][0]["simulated_hex"] == "#808080"
+
+
 def test_demo_page_ships_live_layer():
     """原型页要带上「实时 API」层：健康探测 + 15 个面板适配器 + 离线退回静态快照。"""
 
@@ -165,7 +288,7 @@ GAMUTS = "sRGB,Display P3,ITU-R BT.2020"
 
 def test_meta_lists_m2_surface():
     body = client.get("/api/v1/meta").json()
-    assert len(body["endpoints"]) == 21
+    assert len(body["endpoints"]) == 28
     assert "POST /api/v1/cvd" in body["endpoints"]
     assert "GET /api/v1/chromaticity.svg" in body["endpoints"]
     assert body["counts"]["cat_matrices"] == 13

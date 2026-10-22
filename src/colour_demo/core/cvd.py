@@ -36,8 +36,10 @@ def _matrix(deficiency: str, severity: float) -> np.ndarray:
 def _simulate(rgb: np.ndarray, matrix: np.ndarray) -> np.ndarray:
     """线性光里乘矩阵，再编码回来；越界要裁到 0–1 才算“屏幕能显示”。"""
 
-    linear = np.asarray(colour.models.eotf_inverse_sRGB(rgb), dtype=float)
-    return np.clip(np.asarray(colour.models.eotf_sRGB(matrix @ linear), dtype=float), 0, 1)
+    # 码值 → 线性光（eotf_sRGB），乘矩阵，再编码回码值（eotf_inverse_sRGB）。
+    # 两个函数方向写反不会报错，只会把整块颜色系统性压暗——面板 18 的坑之一。
+    linear = np.asarray(colour.models.eotf_sRGB(rgb), dtype=float)
+    return np.clip(np.asarray(colour.models.eotf_inverse_sRGB(matrix @ linear), dtype=float), 0, 1)
 
 
 def cvd_data(
