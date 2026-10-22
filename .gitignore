@@ -9,6 +9,10 @@ build/
 .venv/
 venv/
 
+# Local sandbox / build scratch
+.tmp/
+.uv-cache/
+
 # Tooling caches
 .pytest_cache/
 .ruff_cache/
@@ -24,3 +28,6 @@ docs/images/report/
 .DS_Store
 .idea/
 .vscode/
+
+# Local process docs (design/notes kept out of repo)
+.dsh/

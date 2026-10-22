@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "colour-demo"
+version = "0.1.0"
+description = "colour-science 0.4.7 的 Web 演示（FastAPI 单体 + 静态单页）"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = { text = "MIT" }
+dependencies = [
+    # 数值口径锁死：黄金值测试依赖这个版本
+    "colour-science==0.4.7",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+]
+
+[project.scripts]
+colour-demo = "colour_demo.main:serve"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/colour_demo"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    # colour 首次展开 ΔE 别名表时的库内噪声（别名 key collide），与本项目无关
+    "ignore:.*key\\(s\\) collide.*:colour.utilities.ColourUsageWarning",
+]
