@@ -20,6 +20,7 @@
 | [`notes/2026-10-22-frontend-live-notes.md`](notes/2026-10-22-frontend-live-notes.md) | 前端双模（在线实时 / 离线快照）与 27 个适配器联调 |
 | [`notes/2026-10-22-m3-server-notes.md`](notes/2026-10-22-m3-server-notes.md) | M3 面板 19–25 端点 |
 | [`notes/2026-10-22-m4-server-notes.md`](notes/2026-10-22-m4-server-notes.md) | M4 能力目录、白名单调用、OpenAPI 控制台 |
+| [`notes/2026-10-22-ci-deploy-notes.md`](notes/2026-10-22-ci-deploy-notes.md) | CI 首跑抓到的三件事（依赖漏声明 / 跨平台断言 / 路由数不到）+ Dockerfile 的坑 |
 
 ## 方案与实现的偏差（有意为之）
 
