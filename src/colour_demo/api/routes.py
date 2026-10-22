@@ -25,6 +25,7 @@ from ..core import (
     spaces,
     spectral,
     temperature,
+    transfer,
     volume,
 )
 from .schemas import (
@@ -42,6 +43,7 @@ from .schemas import (
     QualityRequest,
     SpectralRequest,
     TemperatureRequest,
+    TransferRequest,
     VolumeRequest,
 )
 
@@ -92,6 +94,10 @@ def meta() -> dict:
             },
             "chromaticity_diagrams": list(chromaticity.DIAGRAMS),
             "lut_interpolators": list(lut.INTERPOLATORS),
+            "transfer_encodings": {
+                "default": list(transfer.DEFAULT_ENCODINGS),
+                "luma": list(transfer.LUMA_PRESETS),
+            },
             "quality": {
                 "cri": list(quality.CRI_METHODS),
                 "cqs": list(quality.CQS_METHODS),
@@ -116,6 +122,7 @@ def meta() -> dict:
             "POST /api/v1/photometry",
             "POST /api/v1/delta-e",
             "POST /api/v1/gradient",
+            "POST /api/v1/transfer",
             "GET /api/v1/chromaticity",
             "GET /api/v1/chromaticity.svg",
             "POST /api/v1/volume",
@@ -216,6 +223,18 @@ def get_chromaticity_svg(
         content=chromaticity.render_svg(diagram, names, specs),
         media_type="image/svg+xml",
         headers={**cache_headers, "Content-Disposition": 'inline; filename="chromaticity.svg"'},
+    )
+
+
+@router.post("/transfer")
+def post_transfer(payload: TransferRequest) -> dict:
+    return transfer.transfer_data(
+        colours=payload.colors,
+        encodings=payload.encodings,
+        samples=payload.samples,
+        luma=payload.luma,
+        bits=payload.bits,
+        limited_range=payload.limited_range,
     )
 
 

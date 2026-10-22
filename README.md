@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 覆盖，20 个端点 + 54 个测试全绿）**
+**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 全覆盖，21 个端点 + 56 个测试全绿）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -68,7 +68,7 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 .venv/bin/python -m pytest
 ```
 
-已实现 **20 个端点**，覆盖面板 00–18（面板 19–25 的服务端是 M3）：
+已实现 **21 个端点**，覆盖面板 00–18（面板 19–25 的服务端是 M3）：
 
 | 端点 | 说明 | 面板 |
 | --- | --- | --- |
@@ -81,6 +81,7 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 | `POST /api/v1/photometry` | 明度（7 种）/ 亮度 / 白度 / 黄度 | 04 |
 | `POST /api/v1/delta-e` | 14 种 ΔE 的对称矩阵 + 最近 / 最远一对 | 05 |
 | `POST /api/v1/gradient` | N 步插值 + 步长 ΔE 均匀度 | 06 |
+| `POST /api/v1/transfer` | OETF / Log 编码曲线 + 往返误差 + YCbCr（BT.709/2020/601） | 08 |
 | `GET /api/v1/chromaticity` | 色域三角形面积、样本点 xy / u′v′、是否在色域内 | 09 |
 | `GET /api/v1/chromaticity.svg` | 色度图（唯一出图的端点，ETag 命中回 304） | 09 |
 | `POST /api/v1/volume` | MonteCarlo 色域体积 + MacAdam / Pointer / 可见光谱判据 | 10 |
@@ -97,8 +98,9 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 超上限给「最多 12 个」、未知方法列出可选枚举、请求体超 32 KB 直接 413、500 只返回 `trace_id`。
 每条响应带 `X-Compute-Ms`。
 
-已知缺口：面板 08（传递函数与视频信号，`POST /api/v1/transfer`）还没有端点——它在方案里属 M2，
-但本轮按「面板 09–18 + 10 模块」的范围实现，留给下一轮补齐。
+面板 08 的编码目录不硬编码函数名，而是从 `colour.OETFS` / `LOG_ENCODINGS` / `LOG_DECODINGS`
+现取，逆函数按 `oetf_inverse_<后缀>` 约定配对；0.4.7 里 `oetf_SMPTE240M` 没有逆函数，
+响应会如实标成 `invertible: false` 而不是假装能往返。
 
 ## 示例：现在就能跑的 `colour` 代码
 
@@ -183,8 +185,9 @@ colour-demo/
 - [x] 原型骨架 + 29 页真实数据（00–28，含 7 个前端 SVG chart 块）
 - [x] 补齐原型面板 19–25（M3，`--panel` 逐面板独立进程构建，单面板峰值 126–160 MB）
 - [x] M1：FastAPI 骨架 + 面板 00–07 端点（9 个）+ 黄金值测试（28 项全绿）
-- [x] M2：色域/色温/质量/LUT/适应/外观/感知/对应色/CVD 端点（面板 09–18，11 个端点，54 项全绿）
-- [ ] M2 缺口：面板 08 传递函数（`POST /api/v1/transfer`）
+- [x] M2：色域/色温/质量/LUT/适应/外观/感知/对应色/CVD 端点（面板 09–18，11 个端点）
+- [x] M2 补齐：面板 08 传递函数与视频信号（`POST /api/v1/transfer`）
+- [ ] 前端接 API：原型的静态控件改为调 `/api/v1`（当前仍是占位）
 - [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
 
 ## 参考资料

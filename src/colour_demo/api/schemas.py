@@ -72,6 +72,15 @@ class GradientRequest(_Base):
 # --------------------------------------------------------------------------- #
 # M2（面板 09–18）：图表查询参数在路由上直接校验，其余走下面这些模型
 # --------------------------------------------------------------------------- #
+class TransferRequest(_Base):
+    colors: ColourList | None = None
+    encodings: list[str] | None = Field(default=None, max_length=12)
+    samples: int = Field(default=33, ge=5, le=101)
+    luma: str = Field(default="ITU-R BT.709", max_length=32)
+    bits: int = Field(default=8)
+    limited_range: bool = True
+
+
 class VolumeRequest(_Base):
     spaces: list[str] | None = Field(default=None, max_length=8)
     samples: int = Field(default=20000, ge=1000, le=200000)

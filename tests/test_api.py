@@ -144,7 +144,7 @@ GAMUTS = "sRGB,Display P3,ITU-R BT.2020"
 
 def test_meta_lists_m2_surface():
     body = client.get("/api/v1/meta").json()
-    assert len(body["endpoints"]) == 20
+    assert len(body["endpoints"]) == 21
     assert "POST /api/v1/cvd" in body["endpoints"]
     assert "GET /api/v1/chromaticity.svg" in body["endpoints"]
     assert body["counts"]["cat_matrices"] == 13
@@ -152,6 +152,29 @@ def test_meta_lists_m2_surface():
     # 两派色温方法表不能混：Ohno 2013 只在 uv 派里
     assert "Ohno 2013" in body["methods"]["temperature"]["uv_to_cct"]
     assert "Ohno 2013" not in body["methods"]["temperature"]["xy_to_cct"]
+
+
+def test_transfer_contract():
+    body = client.post("/api/v1/transfer", json={"colors": ["#3B82F6"], "samples": 9}).json()
+    assert body["catalogue"]["counts"]["log_encodings"] == 32
+    assert body["catalogue"]["counts"]["oetfs"] == 12
+
+    curves = {row["name"]: row for row in body["curves"]}
+    assert {"sRGB", "ITU-R BT.2100 PQ", "S-Log3"} <= set(curves)
+    # 编码曲线必须单调递增（横轴线性光 0–1，纵轴编码值）
+    assert all(curves[name]["invertible"] for name in curves)
+    # 往返误差按方案 12 的 1e-6 门禁（实测 0）
+    assert all(row["roundtrip_error"] is not None and row["roundtrip_error"] <= 1e-6 for row in curves.values())
+
+    row = body["ycbcr"]["rows"][0]
+    # BT.709 limited range 下 #3B82F6 的码值（8 bit）
+    assert row["limited"]["codes"] == [123, 196, 86]
+    assert row["limited"]["roundtrip_error"] <= 1e-6
+
+
+def test_transfer_rejects_unknown_encoding():
+    _assert_error(client.post("/api/v1/transfer", json={"encodings": ["No Such Curve"]}), 422, "value_error")
+    _assert_error(client.post("/api/v1/transfer", json={"luma": "ITU-R BT.470"}), 422, "value_error")
 
 
 def test_chromaticity_data():
