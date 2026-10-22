@@ -196,1059 +196,181 @@
     .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
     main{padding:18px}
   }
+  /* ===== 新手外壳（W2） ===== */
+  [hidden]{display:none!important}
+  main:focus{outline:none}
+  a.nav-btn{text-decoration:none}
+  .topnav{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+  .topnav-link{padding:5px 9px;border-radius:999px;color:var(--ink-2);text-decoration:none;font-size:12.5px;white-space:nowrap}
+  .topnav-link:hover{background:#EDEDE8;color:var(--ink)}
+  .topnav-link[aria-current="page"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow);font-weight:600}
+  html[data-mode="expert"] .topnav{display:none}
+  .brand{text-decoration:none;color:inherit;flex:none}
+  .brand-name{display:block;line-height:1.15}
+  .brand-sub{display:block;margin-left:0;font-size:11px;line-height:1.2}
+  .mode-switch{display:inline-flex;align-items:center;flex:none;padding:2px;border:1px solid var(--line-2);border-radius:999px;background:var(--card)}
+  .mode-switch button{border:0;background:transparent;border-radius:999px;padding:4px 10px;font-size:12px;color:var(--ink-3);white-space:nowrap}
+  .mode-switch button[aria-pressed="true"]{background:#1B1D21;color:#fff}
+  html[data-mode="beginner"] .side{display:none}
+  html[data-mode="beginner"] .app{grid-template-columns:minmax(0,1fr)}
+  html[data-mode="beginner"] main{width:100%;max-width:980px;margin:0 auto;padding:30px 24px 100px}
+  html[data-mode="beginner"] #chip-coverage,html[data-mode="beginner"] #chip-progress{display:none}
+
+  .hero{padding:10px 0 26px}
+  .hero h1{font-size:38px;line-height:1.15;letter-spacing:-.035em}
+  .hero-sub{font-size:17px;color:var(--ink-2);max-width:62ch;margin-top:12px}
+  .hero-meta{font-size:12px;color:var(--ink-3);margin-top:10px}
+  .task-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+  .task-card{display:flex;flex-direction:column;gap:8px;padding:16px;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    text-decoration:none;color:inherit;transition:transform .12s ease,border-color .12s ease}
+  .task-card:hover{transform:translateY(-2px);border-color:#C7DBFB}
+  .task-card-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .task-card h2{font-size:16px;letter-spacing:-.01em}
+  .task-card p{font-size:13px;color:var(--ink-2);flex:1}
+  .task-go{font-size:12.5px;color:var(--accent-ink);font-weight:600}
+  .task-no{color:var(--accent)}
+  .home-links{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+  .home-link{display:block;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);
+    background:var(--card);text-decoration:none;color:inherit}
+  .home-link:hover{border-color:#C7DBFB}
+  .home-link b{display:block;font-size:14px}
+  .home-link span{font-size:12px;color:var(--ink-3)}
+
+  .verdict{border:1px solid var(--line);border-left:4px solid var(--green);border-radius:var(--radius);
+    background:var(--card);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:14px}
+  .verdict--warn{border-left-color:#C08A2E;background:#FFFDF6}
+  .verdict--bad{border-left-color:var(--warm);background:#FFF9F6}
+  .verdict-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .verdict-line{display:flex;align-items:baseline;gap:10px;margin-top:6px;flex-wrap:wrap}
+  .verdict-value{font-family:var(--mono);font-size:30px;letter-spacing:-.03em}
+  .verdict-band{font-size:12.5px;padding:2px 8px;border-radius:999px;background:#EDEDE8;color:var(--ink-2)}
+  .verdict-say{margin-top:6px;color:var(--ink-2);font-size:13.5px}
+  .verdict-extra{margin-top:8px;font-size:13px}
+
+  .color-list{display:grid;gap:8px;margin-bottom:12px}
+  .color-row{display:flex;gap:8px;align-items:center}
+  .color-row input[type=color]{width:44px;height:34px}
+  .color-row .hex-input{flex:1;font-family:var(--mono)}
+  .hex-input.is-bad{border-color:var(--warm);outline:2px solid #F3D3C9}
+  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line-2);
+    border-radius:7px;background:var(--card);color:var(--ink-2);font-size:12px;text-decoration:none}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent-ink)}
+  .btn-ghost:disabled{opacity:.45;cursor:not-allowed}
+  .btn-icon{width:30px;height:30px;border:1px solid var(--line-2);border-radius:7px;background:var(--card);color:var(--ink-3)}
+  .btn-icon:disabled{opacity:.4;cursor:not-allowed}
+  .preset-row{display:flex;gap:6px;flex-wrap:wrap}
+  .preset{padding:5px 10px;border:1px solid var(--line-2);border-radius:999px;background:var(--card);
+    font-size:12px;color:var(--ink-2)}
+  .preset[aria-pressed="true"]{background:#1B1D21;color:#fff;border-color:#1B1D21}
+
+  .steps{list-style:none;padding:0;margin:14px 0 0;display:flex;gap:14px;flex-wrap:wrap;color:var(--ink-2);font-size:12.5px}
+  .steps li{display:flex;align-items:center;gap:7px}
+  .steps li span{width:20px;height:20px;border-radius:50%;background:#EDEDE8;color:var(--ink-2);
+    display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex:none}
+  .steps--big{display:grid;gap:12px;font-size:14px}
+  .task-grid-2{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:16px;align-items:start}
+  .task-result{min-height:120px}
+  .task-controls .field{margin-top:10px}
+  .placeholder-title{font-size:16px;margin-bottom:6px}
+  .placeholder-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+  .principles{margin-top:18px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+  .principles>summary{cursor:pointer;padding:12px 16px;font-size:12.5px;color:var(--ink-2);list-style:none}
+  .principles>summary:before{content:"▸ ";color:var(--ink-3)}
+  .principles[open]>summary:before{content:"▾ "}
+  .principles-body{padding:0 16px 16px;color:var(--ink-2);font-size:13px}
+
+  .term{display:inline;padding:0;border:0;background:none;color:inherit;font:inherit;
+    border-bottom:1px dashed #A9B4C4;cursor:help}
+  .term:hover{color:var(--accent-ink);border-bottom-color:var(--accent)}
+  .term-pop{position:absolute;z-index:60;background:var(--card);border:1px solid var(--line-2);border-radius:10px;
+    box-shadow:0 16px 40px -18px rgba(20,22,26,.35);padding:12px 14px;font-size:12.5px;line-height:1.55}
+  .term-pop-head{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+  .term-pop-head span{color:var(--ink-3);font-size:11.5px}
+  .term-pop-note{color:var(--ink-3);font-size:11.5px;margin-top:4px}
+  .term-pop-links{display:flex;gap:12px;margin-top:8px;font-size:12px}
+
+  .glossary-tools{display:flex;gap:12px;align-items:center;margin-bottom:14px}
+  .glossary-tools input{max-width:320px}
+  .glossary-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+  .glossary-item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .glossary-term{display:flex;align-items:baseline;flex-wrap:wrap}
+  .glossary-term b{font-size:15px}
+  .glossary-term span{color:var(--ink-3);font-size:12px;margin-left:8px}
+  .glossary-item p{margin-top:4px;font-size:13px}
+  .glossary-link{font-size:12px;color:var(--accent-ink)}
+
+  .ref-tools{display:flex;align-items:center;gap:4px;margin:14px 0 4px;flex-wrap:wrap}
+  .ref-search{max-width:360px}
+  #ref-count{font-size:12px;color:var(--ink-3);margin-left:10px}
+  .ref-group{margin-top:22px}
+  .ref-group h2{font-size:12px;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+  .ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+  .ref-card{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:9px;background:var(--card);text-decoration:none;color:inherit}
+  .ref-card:hover{border-color:#C7DBFB}
+  .ref-no{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .ref-sub{font-size:11.5px;color:var(--ink-3)}
+
+  .note-box{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:10px 12px;border-radius:9px;
+    border:1px solid var(--line);background:#FCFCFA;font-size:12.5px;margin:10px 0}
+  .note-box .b{font-weight:600}
+  .note-info{border-color:#C7DBFB;background:#F5F9FF}
+  .note-warn{border-color:#F3D3C9;background:#FFF7F4}
+  .beginner-note{display:flex;gap:10px;flex-wrap:wrap;padding:10px 12px;margin-bottom:16px;
+    border:1px dashed var(--line-2);border-radius:9px;background:#FBFAF7;font-size:12px;color:var(--ink-3)}
+  .noscript{max-width:760px;margin:40px auto;padding:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius)}
+
+  @media(max-width:900px){.task-grid-2{grid-template-columns:1fr}.home-links{grid-template-columns:1fr}}
+  .skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:#1B1D21;color:#fff;
+    padding:8px 12px;border-radius:0 0 8px 0;text-decoration:none}
+  .skip-link:focus{left:0}
+  @media(max-width:760px){.topbar{flex-wrap:wrap}.topnav{order:3;width:100%;overflow:auto}.hero h1{font-size:30px}}
+  @media(max-width:600px){
+    .brand-sub{display:none}
+    #chip-lib{display:none}
+    .topnav{gap:2px;flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}
+    .topnav::-webkit-scrollbar{display:none}
+    .topnav-link{padding:4px 7px;font-size:12px}
+    .mode-switch{margin-left:auto}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">跳到正文</a>
 <header class="topbar">
-  <div class="brand">
+  <a class="brand" href="#/" aria-label="回到首页">
     <div class="brand-mark"></div>
-    <div><span class="brand-name">colour-demo</span><span class="brand-sub">全能力演示</span></div>
-  </div>
+    <div><span class="brand-name">colour-demo</span><span class="brand-sub">把颜色讲清楚</span></div>
+  </a>
+  <nav id="topnav" class="topnav" aria-label="任务导航"></nav>
   <div class="spacer"></div>
-  <span class="chip chip--accent"><span class="dot"></span>colour-science <b id="lib-version">0.4.7</b></span>
+  <span class="chip chip--accent" id="chip-lib"><span class="dot"></span>colour-science <b id="lib-version">0.4.7</b></span>
   <span class="chip" id="chip-coverage">—</span>
   <span class="chip" id="chip-progress">—</span>
-  <span class="chip chip--warm" id="chip-api">静态快照 · 未连 API</span>
+  <span class="chip chip--warm" id="chip-api">离线快照</span>
+  <div class="mode-switch" role="group" aria-label="视图模式">
+    <button type="button" data-mode-btn="beginner" aria-pressed="true">新手</button>
+    <button type="button" data-mode-btn="expert" aria-pressed="false">专家</button>
+  </div>
 </header>
 <div class="app">
-  <aside class="side" id="side"></aside>
-  <main id="main"></main>
+  <aside class="side" id="side" hidden></aside>
+  <main id="main" tabindex="-1"></main>
 </div>
 <div class="toast" id="toast">已复制</div>
-
+<div class="term-pop" id="term-pop" role="tooltip" hidden></div>
+<noscript>
+  <div class="noscript">
+    <h1>这个演示需要 JavaScript</h1>
+    <p>开启后可以按 6 个任务查看：鲜艳度、色差、渐变、色弱、换灯、色号；也可以翻 29 个参考面板。</p>
+  </div>
+</noscript>
 <script>
 const DATA = /*__DATA__*/;
-
-/* ---------------- helpers ---------------- */
-const $ = (s, r = document) => r.querySelector(s);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fmt = (v, span) => {
-  const n = Number(v);
-  if (!isFinite(n)) return String(v);
-  const a = Math.abs(n);
-  if (a === 0) return "0";
-  // span 给定时按刻度总跨度选小数位，避免相邻刻度四舍五入成同一个数字
-  if (span > 0) {
-    const digits = Math.max(0, Math.min(6, Math.ceil(-Math.log10(span / 5))));
-    if (a < 1e-4) return n.toExponential(1);
-    return n.toFixed(digits);
-  }
-  if (a >= 1000) return n.toFixed(0);
-  if (a >= 100) return n.toFixed(a % 1 === 0 ? 0 : 1);
-  if (a >= 10) return n.toFixed(a % 1 === 0 ? 0 : 1);
-  if (a >= 1) return n.toFixed(2);
-  if (a >= 0.01) return n.toFixed(3);
-  return n.toExponential(1);
-};
-function toast(text) {
-  const t = $("#toast");
-  t.textContent = text;
-  t.classList.add("show");
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.classList.remove("show"), 1400);
-}
-function copyText(text) {
-  const fallback = () => {
-    const area = document.createElement("textarea");
-    area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
-    document.body.appendChild(area); area.select();
-    try { document.execCommand("copy"); toast("已复制"); } catch (e) { toast("复制失败"); }
-    document.body.removeChild(area);
-  };
-  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => toast("已复制"), fallback);
-  else fallback();
-}
-function highlight(text) {
-  return esc(text).replace(/(&quot;(?:\\.|[^&])*?&quot;)(\s*:)?|\b(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\b|\b(true|false|null)\b/g,
-    (m, str, colon, num, lit) => {
-      if (str) return colon ? `<span class="k-key">${str}</span>${colon}` : `<span class="k-str">${str}</span>`;
-      if (num) return `<span class="k-num">${num}</span>`;
-      if (lit) return `<span class="k-num">${lit}</span>`;
-      return m;
-    });
-}
-const PHASE_CLASS = { M1: "tag--m1", M2: "tag--m2", M3: "tag--m3", M4: "tag--m4", M0: "tag--m1" };
-
-/* ---------------- live API 层 ----------------
-   原型默认是构建时的静态快照（离线可用）；检测到本地服务端时，
-   同一页切换成「实时调用」：控件真实可改，结果由 /api/v1 现算。 */
-const API_BASE = (() => {
-  const override = new URLSearchParams(location.search).get("api");
-  if (override) return override.replace(/\/+$/, "");
-  if (location.protocol === "file:") return "http://127.0.0.1:8000";
-  // 由服务端托管（/demo/）时就是同源，省掉跨域
-  return location.origin.startsWith("http") ? "" : "http://127.0.0.1:8000";
-})();
-
-const api = { checked: false, ok: false, version: null };
-
-async function apiProbe() {
-  if (api.checked) return api;
-  api.checked = true;
-  try {
-    const response = await fetch(`${API_BASE}/api/v1/health`, { cache: "no-store" });
-    const body = await response.json();
-    api.ok = response.ok && body.status === "ok";
-    api.version = body.colour_version;
-  } catch (error) {
-    api.ok = false;
-  }
-  if (api.ok) {
-    try {
-      const response = await fetch(`${API_BASE}/api/v1/catalog?limit=1`, { cache: "no-store" });
-      api.whitelist = (await response.json()).whitelist || [];
-    } catch (error) {
-      api.whitelist = [];
-    }
-  }
-  const chip = $("#chip-api");
-  if (chip) {
-    chip.textContent = api.ok ? `API 在线 · colour ${api.version}` : "静态快照 · 未连 API";
-    chip.classList.toggle("chip--ok", api.ok);
-  }
-  return api;
-}
-
-async function apiCall(spec, state) {
-  const [method, path] = spec.endpoint.split(" ");
-  let url = `${API_BASE}${path}`;
-  if (spec.query) {
-    const params = new URLSearchParams();
-    Object.entries(spec.query(state)).forEach(([key, value]) => {
-      if (value !== "" && value !== null && value !== undefined) params.append(key, value);
-    });
-    const query = params.toString();
-    if (query) url += "?" + query;
-  }
-  const init = { method, headers: {}, cache: "no-store" };
-  if (method !== "GET") {
-    init.headers["content-type"] = "application/json";
-    init.body = JSON.stringify(spec.body(state));
-  }
-  const started = performance.now();
-  const response = await fetch(url, init);
-  const elapsed = Math.round(performance.now() - started);
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = payload.detail || {};
-    const parts = [response.status, detail.type, detail.message].filter(Boolean);
-    throw new Error(parts.join(" · ") || `HTTP ${response.status}`);
-  }
-  return { payload, elapsed, request: init.body ? JSON.parse(init.body) : Object.fromEntries(new URLSearchParams(spec.query ? spec.query(state) : {})) };
-}
-
-/* 块构造器：与 renderBlock 的入参严格对齐，避免两端格式漂移 */
-const cell = (v) => (v === null || v === undefined || (typeof v === "number" && !isFinite(v)) ? "—" : String(v));
-const num = (v, digits = 4) => (v === null || v === undefined || !isFinite(Number(v)) ? "—" : Number(v).toFixed(digits));
-const fixed = (v, digits = 4) => (Array.isArray(v) ? v.map((x) => num(x, digits)).join(", ") : num(v, digits));
-const B = {
-  table: (title, head, rows, opts = {}) => ({
-    type: "table", title, head, rows: rows.map((row) => row.map(cell)), mono: opts.mono, widths: opts.widths, note: opts.note,
-  }),
-  kv: (title, rows) => ({ type: "kv", title, rows }),
-  matrix: (title, colors, values, caption) => ({ type: "matrix", title, colors, values, caption }),
-  chart: (title, series, opts = {}) => ({
-    type: "chart", title, series, height: opts.height || 260, xlabel: opts.xlabel, ylabel: opts.ylabel, caption: opts.caption, zero: opts.zero,
-  }),
-  swatches: (title, items, cols) => ({ type: "swatches", title, items, cols: cols || Math.max(1, Math.min(8, items.length)) }),
-  image: (src, caption, maxw) => ({ type: "image", src, caption, alt: caption || "chart", maxw: maxw || "520px" }),
-  note: (text, tone) => ({ type: "note", text, tone: tone || "info", title: tone === "warn" ? "注意" : "说明" }),
-  json: (title, value) => ({ type: "json", title, code: JSON.stringify(value, null, 2) }),
-};
-
-const splitList = (text) => String(text || "").split(/[,，\s]+/).filter(Boolean).slice(0, 12);
-const series = (name, points, extra = {}) => ({ name, points, ...extra });
-
-/* 每个面板的实时适配器：fields 决定控件，body/query 决定请求，blocks 决定回显 */
-const LIVE = {};
-
-LIVE.convert = {
-  endpoint: "POST /api/v1/convert",
-  hint: "改颜色或目标空间 → 服务端重算 14 个核心空间，并给出换算链路。",
-  fields: [
-    { key: "colors", label: "颜色（逗号分隔，≤12）", kind: "text", value: "#3B82F6, #E9C46A" },
-    { key: "target", label: "换算链路目标", kind: "select", options: ["CIE Lab", "Oklab", "CAM16 UCS", "HCL", "Oklch"], value: "CIE Lab" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), target: s.target }),
-  blocks: (p) => [
-    B.table("实时结果：核心空间坐标", ["输入", ...p.spaces],
-      p.rows.map((row) => [row.hex, ...p.spaces.map((space) => fixed(row.values[space], 4))]),
-      { mono: [0], note: `XYZ 用 0–1 域，Lab/Luv 用 0–100 域（to_reference_scale=True）。` }),
-    B.kv("换算链路", [
-      ["路径", (p.conversion_path || []).join(" → ") || "—", `${p.conversion_hops || 0} 跳`],
-      ["起点", p.source, "source"],
-    ]),
-  ],
-};
-
-LIVE.chroma = {
-  endpoint: "POST /api/v1/chroma",
-  hint: "主波长/纯度依赖光源白点，换光源看看数字怎么变。",
-  fields: [
-    { key: "colors", label: "颜色（逗号分隔）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
-    { key: "illuminant", label: "光源", kind: "select", options: ["D65", "D50", "A", "C", "FL2"], value: "D65" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), illuminant: s.illuminant }),
-  blocks: (p) => [
-    B.table("实时结果：色度学属性", ["颜色", "xy", "uv(1960)", "u′v′(1976)", "主波长 nm", "激发纯度", "色度纯度"],
-      p.rows.map((row) => [row.hex, fixed(row.xy), fixed(row.uv), fixed(row.uv_prime), num(row.dominant_wavelength, 1), num(row.excitation_purity, 4), num(row.colorimetric_purity, 4)]),
-      { mono: [0, 1, 2, 3], note: `白点 xy = ${fixed(p.whitepoint_xy)}（${p.illuminant} / ${p.observer}）` }),
-  ],
-};
-
-LIVE["delta-e"] = {
-  endpoint: "POST /api/v1/delta-e",
-  hint: "换 ΔE 方法，同一组颜色的数值差可能很大——这就是「不可比」的来源。",
-  fields: [
-    { key: "colors", label: "颜色（逗号分隔，≥2）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
-    { key: "method", label: "方法", kind: "select", options: ["CIE 2000", "CIE 1976", "CIE 1994", "CMC", "CAM02-UCS", "CAM16-UCS"], value: "CIE 2000" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), method: s.method }),
-  blocks: (p) => [
-    B.matrix(`ΔE 矩阵（${p.method}）`, p.colors, p.matrix, "对角线不参与比较；单元格越深差异越大。"),
-    B.kv("极值对", [
-      ["最接近", `${p.pairs.closest.a} ↔ ${p.pairs.closest.b}`, `ΔE ${num(p.pairs.closest.value, 2)}`],
-      ["最远", `${p.pairs.farthest.a} ↔ ${p.pairs.farthest.b}`, `ΔE ${num(p.pairs.farthest.value, 2)}`],
-    ]),
-  ],
-};
-
-LIVE.gradient = {
-  endpoint: "POST /api/v1/gradient",
-  hint: "在哪个空间插值，决定了步长是否均匀。",
-  fields: [
-    { key: "from", label: "起点", kind: "text", value: "#264653" },
-    { key: "to", label: "终点", kind: "text", value: "#E9C46A" },
-    { key: "space", label: "插值空间", kind: "select", options: ["CIE Lab", "Oklab", "CIE Luv", "sRGB", "CAM16 UCS"], value: "Oklab" },
-    { key: "steps", label: "步数", kind: "text", value: "11" },
-  ],
-  body: (s) => ({ from: s.from, to: s.to, space: s.space, steps: Math.max(2, Math.min(101, parseInt(s.steps, 10) || 11)) }),
-  blocks: (p) => [
-    { type: "strips", title: `实时渐变（${p.space}，${p.steps} 步）`, items: [{ label: `${p.space}`, note: p.method, colors: p.rows.map((row) => row.hex), stats: [["比值", num(p.uniformity.ratio, 3)], ["均值 ΔE", num(p.uniformity.mean, 3)]] }] },
-    B.chart("相邻步的 ΔE", [series("ΔE", p.deltas.map((value, index) => [index + 1, value]))], { xlabel: "步序", ylabel: "ΔE", zero: true }),
-  ],
-};
-
-LIVE.transfer = {
-  endpoint: "POST /api/v1/transfer",
-  hint: "编码曲线 + 往返误差 + YCbCr 码值。",
-  fields: [
-    { key: "colors", label: "颜色（YCbCr 取样）", kind: "text", value: "#3B82F6" },
-    { key: "samples", label: "曲线采样点", kind: "select", options: ["17", "33", "65"], value: "33" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), samples: parseInt(s.samples, 10) }),
-  blocks: (p) => [
-    B.chart("编码曲线（横轴线性光 0–1）",
-      p.curves.slice(0, 6).map((row) => series(row.name, row.linear
-        .map((x, i) => [x, row.encoded[i]])
-        .filter(([, y]) => typeof y === "number" && isFinite(y)))),
-      { xlabel: "线性光", ylabel: "编码值", height: 300 }),
-    B.table("往返误差（encode → decode）", ["编码", "分组", "最大误差", "可逆"],
-      p.curves.map((row) => [row.name, row.group, row.roundtrip_error === null ? "不可计算" : row.roundtrip_error.toExponential(1), row.invertible ? "是" : "否"]),
-      { mono: [2] }),
-    B.table("YCbCr 码值", ["颜色", "范围", "Y / Cb / Cr（浮点）", "码值", "往返误差"],
-      p.ycbcr.rows.flatMap((row) => ["limited", "full"].filter((k) => row[k]).map((k) => [row.hex, k, fixed(row[k].ycbcr, 4), row[k].codes.join(" / "), row[k].roundtrip_error.toExponential(1)])),
-      { mono: [0, 2, 3], note: `${p.ycbcr.luma} · ${p.ycbcr.bits} bit` }),
-  ],
-};
-
-LIVE.chromaticity = {
-  endpoint: "GET /api/v1/chromaticity.svg",
-  hint: "换色度图/色域/样本点：图由服务端 matplotlib 现画，下面的面积表来自 /chromaticity。",
-  fields: [
-    { key: "diagram", label: "色度图", kind: "select", options: ["CIE 1931", "CIE 1960 UCS", "CIE 1976 UCS"], value: "CIE 1931" },
-    { key: "gamuts", label: "叠加色域", kind: "select", options: ["sRGB,Display P3,ITU-R BT.2020", "sRGB", "sRGB,Display P3"], value: "sRGB,Display P3,ITU-R BT.2020" },
-    { key: "colors", label: "样本点", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
-  ],
-  query: (s) => ({ diagram: s.diagram, gamuts: s.gamuts, colors: splitList(s.colors).join(",") }),
-  svgUrl: (s) => `${API_BASE}/api/v1/chromaticity.svg?` + new URLSearchParams(LIVE.chromaticity.query(s)).toString(),
-  dataEndpoint: "GET /api/v1/chromaticity",
-  blocks: (p, state) => [
-    B.image(LIVE.chromaticity.svgUrl(state), `${p.diagram} + ${p.gamuts.map((g) => g.name).join(" / ")} + ${p.samples.length} 个样本点`, "560px"),
-    B.table("色域三角形面积（xy 平面）", ["色域", "面积", "相对 sRGB"],
-      p.gamuts.map((g) => [g.name, num(g.area_xy, 5), num(g.relative_to_sRGB, 3) + "×"]), { mono: [1, 2] }),
-    B.table("样本点与色域归属", ["颜色", "xy", "u′v′", ...p.gamuts.map((g) => g.name)],
-      p.samples.map((row) => [row.hex, fixed(row.xy), fixed(row.uv_1976), ...p.gamuts.map((g) => (row.inside[g.name] ? "✔" : "✗"))]),
-      { mono: [0, 1, 2], note: "✔/✗ = 该空间编码值是否都落在 0–1（矩阵 + cctf 判定）" }),
-  ],
-};
-
-LIVE["gamut-volume"] = {
-  endpoint: "POST /api/v1/volume",
-  hint: "MonteCarlo 体积（固定种子，可复现）+ 三套边界判据。",
-  fields: [
-    { key: "samples", label: "采样数", kind: "select", options: ["5000", "20000", "50000"], value: "20000" },
-    { key: "colors", label: "边界判定的样本色", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
-  ],
-  body: (s) => ({ spaces: ["sRGB", "Display P3", "ITU-R BT.2020", "ACES2065-1"], samples: parseInt(s.samples, 10), colors: splitList(s.colors) }),
-  blocks: (p) => [
-    B.table(`色域体积（${p.samples} 采样，seed=${p.seed}）`, ["色彩空间", "体积（Lab 单位）", "相对 sRGB", "Lab 范围"],
-      p.rows.map((row) => [row.space, num(row.volume, 1), num(row.relative_to_reference, 3) + "×", row.lab_limits ? row.lab_limits.map((pair) => `[${num(pair[0], 0)}, ${num(pair[1], 0)}]`).join(" ") : "—"]),
-      { mono: [1, 2] }),
-    p.boundaries.length ? B.table("边界判据", ["颜色", "MacAdam(D65)", "Pointer", "可见光谱"],
-      p.boundaries.map((row) => [row.hex, row.within_macadam_D65 ? "内" : "外", row.within_pointer ? "内" : "外", row.within_visible_spectrum ? "内" : "外"]), { mono: [0] }) : null,
-  ].filter(Boolean),
-};
-
-LIVE.temperature = {
-  endpoint: "POST /api/v1/temperature",
-  hint: "换色温：xy 派与 uv 派方法表互不通用，正反解分开看。",
-  fields: [
-    { key: "cct", label: "色温 K", kind: "select", options: ["2700", "4000", "5000", "6500", "9000"], value: "6500" },
-    { key: "colors", label: "待测颜色（可选）", kind: "text", value: "#FFFFFF" },
-  ],
-  body: (s) => ({ cct: parseInt(s.cct, 10), colors: splitList(s.colors) }),
-  blocks: (p) => [
-    B.table("xy → CCT（4 种反解）", ["样本", ...Object.keys(p.xy_to_cct[0].results)],
-      p.xy_to_cct.map((row) => [row.sample, ...Object.values(row.results).map((v) => (v === null ? "—" : num(v, 1) + " K"))]), { mono: [0] }),
-    B.table("uv → CCT（含 D_uv）", ["样本", ...Object.keys(p.uv_to_cct[0].results)],
-      p.uv_to_cct.map((row) => [row.sample, ...Object.values(row.results).map((v) => (v && v.cct !== null ? `${num(v.cct, 1)} K` : "—"))]), { mono: [0], note: "Ohno 2013 / Robertson 1968 返回 (CCT, D_uv) 二元组" }),
-    B.table(`CCT → xy / uv（${p.input.cct} K）`, ["方法", "xy", "uv"],
-      p.cct_to_xy.map((row, i) => [row.method, fixed(row.xy, 5), fixed((p.cct_to_uv[i] || {}).uv, 5)]), { mono: [0, 1, 2] }),
-    B.chart("普朗克轨迹（Planck 1900）", [series("黑体轨迹", p.planckian_locus.map((row) => [row.xy[0], row.xy[1]]), { mode: "scatter" })],
-      { xlabel: "x", ylabel: "y", height: 300 }),
-  ],
-};
-
-LIVE.quality = {
-  endpoint: "POST /api/v1/quality",
-  hint: "四套显色口径并列：Ra / Qa / Rf·Rg / SSI，结论会互相打架。",
-  fields: [
-    { key: "illuminants", label: "光源（逗号分隔）", kind: "text", value: "D65, FL2, A, FL11" },
-    { key: "reference", label: "SSI 参考", kind: "select", options: ["D65", "D50", "A"], value: "D65" },
-  ],
-  body: (s) => ({ illuminants: splitList(s.illuminants), reference: s.reference }),
-  blocks: (p) => [
-    B.table("显色指标", ["光源", "CRI Ra", "Ra(CIE 2024)", "CQS Qa", "TM-30 Rf", "TM-30 Rg", "SSI"],
-      p.rows.map((row) => [row.illuminant, num(row.Ra, 2), num(row.Ra_2024, 2), num(row.Qa, 2), num(row.Rf, 2), num(row.Rg, 2), num(row.ssi, 3)]), { mono: [0] }),
-    p.special_indices.length ? B.table(`CRI 特殊显色指数（${p.special_indices[0].illuminant}）`,
-      ["色样", ...Object.keys(p.special_indices[0]).filter((k) => k !== "illuminant")],
-      [["Ri", ...Object.entries(p.special_indices[0]).filter(([k]) => k !== "illuminant").map(([, v]) => num(v, 1))]], { mono: [0] }) : null,
-  ].filter(Boolean),
-};
-
-LIVE["image-lut"] = {
-  endpoint: "POST /api/v1/lut",
-  hint: "3D LUT 的两种插值方式在同一批颜色上的差异。",
-  fields: [
-    { key: "colors", label: "取样颜色", kind: "text", value: "#3B82F6, #808080, #E9C46A" },
-    { key: "size", label: "LUT 尺寸", kind: "select", options: ["9", "17", "33"], value: "17" },
-    { key: "gains", label: "通道增益 R,G,B", kind: "text", value: "1.2, 0.85, 1.05" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), size: parseInt(s.size, 10), gains: splitList(s.gains).map(Number) }),
-  blocks: (p) => [
-    B.table(`LUT ${p.size}³（${p.table_points} 格点）`, ["输入", "Trilinear", "Tetrahedral", "两法差"],
-      p.rows.map((row) => [row.input, row.outputs.Trilinear ? row.outputs.Trilinear.hex : "—", row.outputs.Tetrahedral ? row.outputs.Tetrahedral.hex : "—", num(row.interpolator_spread, 5)]),
-      { mono: [0, 1, 2], note: p.domain }),
-    { type: "swatches", title: "灰阶带（LUT 后）", cols: Math.min(9, p.ramp.length), items: p.ramp.map((row) => ({ hex: row.output, label: row.output, sub: row.input })) },
-  ],
-};
-
-LIVE.adaptation = {
-  endpoint: "POST /api/v1/adapt",
-  hint: "7 种色适应方法（含需要补观察条件的 4 个）+ vK20 不完全适应。",
-  fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
-    { key: "source", label: "源白点", kind: "select", options: ["A", "D50", "D65", "D93", "FL2"], value: "A" },
-    { key: "target", label: "目标白点", kind: "select", options: ["D65", "D50", "D93"], value: "D65" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), source: s.source, target: s.target }),
-  blocks: (p) => [
-    B.table(`适应后结果（${p.source.name} → ${p.target.name}）`, ["方法", "xy", "sRGB", "ΔE(原色)"],
-      Object.entries(p.rows[0].results).map(([method, value]) => [method, value ? fixed(value.xy) : "—", value ? value.hex : "—", value ? num(value.delta_e, 2) : "—"]),
-      { mono: [1, 2] }),
-    B.table("vK20（不完全适应）", ["颜色", "xy", "sRGB"],
-      Object.entries(p.vK20).map(([input, value]) => [input, value ? fixed(value.xy) : "—", value ? value.hex : "—"]), { mono: [1, 2] }),
-    B.table("CAT 矩阵", ["名称", "3×3 系数"], p.cat_matrices.map((row) => [row.name, row.matrix.map((r) => r.map((v) => num(v, 4)).join(", ")).join(" | ")]), { mono: [1] }),
-  ],
-};
-
-LIVE.appearance = {
-  endpoint: "POST /api/v1/appearance",
-  hint: "12 个外观模型对同一 XYZ 给出不同的 J/C/h；ZCAM 用 0–1 域，其余多数 0–100。",
-  fields: [
-    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
-    { key: "L_A", label: "L_A（cd·m⁻²）", kind: "select", options: ["4.07", "20", "100", "318.31"], value: "4.07" },
-    { key: "surround", label: "环绕", kind: "select", options: ["Average", "Dim", "Dark"], value: "Average" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), L_A: Number(s.L_A), surround: s.surround }),
-  blocks: (p) => [
-    B.table(`外观模型输出（L_A=${p.conditions.L_A.toFixed(2)}, Y_b=${p.conditions.Y_b}, ${p.conditions.surround}）`,
-      ["模型", "J", "C", "h", "M", "H", "往返误差", "域"],
-      Object.entries(p.rows[0].results).map(([model, value]) => [model, num(value.J, 2), num(value.C, 2), num(value.h, 1), num(value.M, 2), num(value.H, 1), value.roundtrip_error === null ? "无逆变换" : value.roundtrip_error.toExponential(1), p.models[model].scale === 1 ? "0–1" : "0–100"]),
-      { mono: [0, 1, 2, 3, 4, 5] }),
-  ],
-};
-
-LIVE["phenomena-vision"] = {
-  endpoint: "POST /api/v1/phenomena-vision",
-  hint: "H-K 效应 + Barten CSF（亮度经瞳孔换成视网膜照度再算）。",
-  fields: [
-    { key: "colors", label: "样本颜色", kind: "text", value: "#3B82F6" },
-    { key: "luminances", label: "亮度 cd·m⁻²（逗号分隔）", kind: "text", value: "10, 100, 1000" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), luminances: splitList(s.luminances).map(Number), points: 32 }),
-  blocks: (p) => [
-    B.chart("Helmholtz–Kohlrausch 效应", ["VCC", "VAC"].map((method) => series(method, p.hk.chromas.map((c, i) => [c, p.hk.curves[method][i]]))), { xlabel: "彩度 C", ylabel: "亮度增益因子", height: 280 }),
-    B.chart("Barten 1999 对比敏感度", Object.entries(p.csf.curves).map(([level, values]) => series(`Y₀=${level} cd·m⁻²`, p.csf.frequencies.map((f, i) => [f, values[i]]))), { xlabel: "空间频率 / cpd", ylabel: "S", height: 280 }),
-    B.table("派生量", ["亮度", "瞳孔直径 mm", "视网膜照度 Td", "CSF 峰值 cpd"],
-      p.csf.derived.map((row) => [num(row.luminance, 0), num(row.pupil_diameter_mm, 3), num(row.retinal_illuminance_td, 1), num(row.peak_frequency_cpd, 2)]), { mono: [0, 1, 2, 3] }),
-  ],
-};
-
-LIVE.corresponding = {
-  endpoint: "POST /api/v1/corresponding",
-  hint: "Breneman 实验 × 5 个模型：预测点离实测终点有多远。",
-  fields: [
-    { key: "experiment", label: "实验编号", kind: "select", options: ["1", "2", "3", "4", "6", "8", "11", "12"], value: "1" },
-  ],
-  body: (s) => ({ experiment: parseInt(s.experiment, 10) }),
-  blocks: (p) => [
-    B.table(`实验 ${p.experiment}：各模型预测偏差`, ["模型", "均值 u′v′ 距离", "最大", "样本数"],
-      p.rows.map((row) => [row.model, row.mean_uv_error === undefined ? "—" : num(row.mean_uv_error, 5), row.max_uv_error === undefined ? "—" : num(row.max_uv_error, 5), (row.samples || []).length]), { mono: [0, 1, 2] }),
-    B.table("8 组实验的横向对比", ["模型", "参与实验数", "平均偏差"], p.leaderboard.map((row) => [row.model, row.experiments, num(row.mean_uv_error, 5)]), { mono: [0, 2] }),
-    B.note(p.unavailable_experiments.map((item) => `实验 ${item.experiment} 不可用：${item.reason}`).join("；"), "warn"),
-  ],
-};
-
-LIVE.cvd = {
-  endpoint: "POST /api/v1/cvd",
-  hint: "Machado 2009：类型 + 严重度 → 模拟后的调色板与可区分性指标。",
-  fields: [
-    { key: "colors", label: "调色板", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
-    { key: "deficiency", label: "类型", kind: "select", options: ["Protanomaly", "Deuteranomaly", "Tritanomaly"], value: "Deuteranomaly" },
-    { key: "severity", label: "严重度（0–1）", kind: "range", min: 0, max: 1, step: 0.05, value: "1" },
-  ],
-  body: (s) => ({ colors: splitList(s.colors), deficiency: s.deficiency, severity: Number(s.severity) }),
-  blocks: (p) => [
-    { type: "swatches", title: `原始调色板`, cols: Math.min(8, p.rows.length), items: p.rows.map((row, i) => ({ hex: row.hex, label: `#${i + 1}`, sub: row.hex })) },
-    { type: "swatches", title: `${p.label}（severity=${p.severity.toFixed(2)}）`, cols: Math.min(8, p.rows.length), items: p.rows.map((row, i) => ({ hex: row.simulated_hex, label: `#${i + 1}`, sub: `ΔE ${num(row.delta_e, 1)}` })) },
-    B.kv("可区分性", [
-      ["原色 vs 模拟 ΔE（均值）", num(p.metrics.mean_delta_e, 2), "越大差异越大"],
-      ["模拟后相邻最小 ΔE", num(p.metrics.min_adjacent_delta_e, 2), `阈值 ${p.metrics.indistinguishable_threshold}`],
-      ["不可区分相邻对", String(p.metrics.collisions.length), "低于阈值的相邻对"],
-    ]),
-  ],
-};
-
-/* ---- M3（面板 19–25）适配器 ---- */
-LIVE.recovery = {
-  endpoint: "POST /api/v1/recovery",
-  hint: "同一支 RGB 的重建光谱：曲线不同、积分回三刺激值后应当一致（同色异谱）。",
-  fields: [{ key: "colors", label: "输入色", kind: "text", value: "#3B82F6" }],
-  body: (s) => ({ colors: splitList(s.colors) }),
-  blocks: (p) => [
-    B.chart("重建光谱（横轴波长 nm）",
-      p.curves.map((row) => series(row.name, row.wavelengths.map((w, i) => [w, row.values[i]]))),
-      { xlabel: "波长 / nm", ylabel: "反射率", height: 300, zero: true }),
-    B.table("重建精度（ΔE CIE 2000）", ["方法", "入参域", "重建 sRGB", "ΔE", "采样点", "范围 nm"],
-      p.rows.map((row) => [row.method, row.domain, row.hex || "—", num(row.delta_e, 3), row.samples || "—", (row.range_nm || []).join("–")]),
-      { mono: [0, 2, 3] }),
-  ],
-};
-
-LIVE.characterisation = {
-  endpoint: "POST /api/v1/correction",
-  hint: "24 色卡：模拟 A 光源下拍摄 → 三种校正方法把平均 ΔE 压回去。",
-  fields: [],
-  body: () => ({}),
-  blocks: (p) => [
-    { type: "strips", title: "24 色卡前 12 色：校正前后", items: p.stages.filter((stage) => stage.swatches.length).map((stage) => ({
-      label: stage.stage, note: `${p.capture_model}`, colors: stage.swatches,
-      stats: [["平均 ΔE", num(stage.mean_delta_e, 2)], ["最大 ΔE", num(stage.max_delta_e, 2)]],
-    })) },
-    B.table("校正效果", ["阶段", "平均 ΔE", "最大 ΔE"], p.stages.map((stage) => [stage.stage, num(stage.mean_delta_e, 2), num(stage.max_delta_e, 2)]), { mono: [1, 2] }),
-    B.table("矩阵方法", ["方法", "矩阵维度"], p.matrices.map((row) => [row.method, `${row.shape[0]}×${row.shape[1]}`]), { mono: [1] }),
-  ],
-};
-
-LIVE.notation = {
-  endpoint: "POST /api/v1/notation",
-  hint: "Munsell / CSS 关键字 / HEX 三种写法互相解析；反向不唯一。",
-  fields: [
-    { key: "munsell", label: "Munsell 记号", kind: "text", value: "5R 5/12" },
-    { key: "keyword", label: "CSS 关键字", kind: "text", value: "tomato" },
-    { key: "hex", label: "HEX", kind: "text", value: "#3B82F6" },
-  ],
-  body: (s) => ({ munsell: s.munsell, keyword: s.keyword, hex: s.hex }),
-  blocks: (p) => [
-    B.kv("解析结果", [
-      ["Munsell → xyY", `${p.munsell.input} → ${fixed(p.munsell.xyY, 4)}`, p.munsell.hex],
-      ["xyY → Munsell", p.munsell.back, p.munsell.roundtrip_matches ? "往返一致" : "往返不一致"],
-      ["CSS 关键字", `${p.keyword.input} → ${p.keyword.hex}`, fixed(p.keyword.rgb, 3)],
-      ["HEX", `${p.hex.input} → ${p.hex.canonical}`, fixed(p.hex.rgb, 5)],
-      ["色名集合", `CSS ${p.counts.css_color_3}（基础 ${p.counts.css_basic}）/ Munsell ${p.counts.munsell_all} 个色样`, "CSS Color 3"],
-    ]),
-    B.table("七种 Munsell 明度换算", ["方法", `V(Y=${p.value_y})`], p.value_methods.map((row) => [row.method, num(row.value, 4)]), { mono: [0, 1] }),
-    { type: "swatches", title: "CSS Color 3 的 16 个基础色名", cols: 8, items: p.css_basic.map((row) => ({ hex: row.hex, label: row.name, sub: row.hex })) },
-  ],
-};
-
-LIVE.signals = {
-  endpoint: "POST /api/v1/interpolate",
-  hint: "FL11（含汞灯尖线）从 20 nm 粗采样插回 5 nm：看各插值器的过冲与残差。",
-  fields: [
-    { key: "illuminant", label: "光源", kind: "select", options: ["FL11", "FL2", "A", "D65"], value: "FL11" },
-    { key: "coarse_step", label: "粗采样间隔 nm", kind: "select", options: ["10", "20", "40"], value: "20" },
-  ],
-  body: (s) => ({ illuminant: s.illuminant, coarse_step: Number(s.coarse_step), target_step: 5 }),
-  blocks: (p) => [
-    B.chart(`${p.illuminant}：粗采样 → ${p.shape.target_step} nm 重建`,
-      [series("真实", p.curves.truth.wavelengths.map((w, i) => [w, p.curves.truth.values[i]]), { dashed: true }),
-       series("粗采样", p.curves.coarse.wavelengths.map((w, i) => [w, p.curves.coarse.values[i]]), { mode: "scatter" }),
-       ...p.curves.reconstructions.map((row) => series(row.name, row.wavelengths.map((w, i) => [w, row.values[i]])))],
-      { xlabel: "波长 / nm", ylabel: "相对功率", height: 300 }),
-    B.chart("重建误差（各方法 − 真值）",
-      p.curves.residuals.map((row) => series(row.name, row.wavelengths.map((w, i) => [w, row.values[i]]))),
-      { xlabel: "波长 / nm", ylabel: "误差", height: 240, zero: true }),
-    B.table("重建误差", ["插值器", "最大绝对误差", "平均绝对误差", "负值点数"],
-      p.rows.map((row) => [row.interpolator, num(row.max_abs_error, 2), num(row.mean_abs_error, 2), row.negative_points]), { mono: [1, 2, 3] }),
-    B.kv("3D LUT 表插值（9³ 非线性合成表）", [
-      ["探测点", fixed(p.lut.probe, 2), `${p.lut.probes} 个随机点`],
-      ["Trilinear", fixed(p.lut.trilinear, 4), "—"],
-      ["Tetrahedral", fixed(p.lut.tetrahedral, 4), "—"],
-      ["两法差异", `最大 ${num(p.lut.max_gap_codes, 2)} /255、平均 ${num(p.lut.mean_gap_codes, 2)} /255`, "恒等表上必然为 0"],
-    ]),
-  ],
-};
-
-LIVE.geometry = {
-  endpoint: "POST /api/v1/geometry",
-  hint: "MacAdam 椭圆：60 个采样点 → 二次曲线 → 标准形，反推原始参数。",
-  fields: [{ key: "ellipse_index", label: "椭圆序号（1–25）", kind: "select", options: ["1", "6", "11", "16", "21", "25"], value: "11" }],
-  body: (s) => ({ ellipse_index: Math.max(0, Math.min(24, parseInt(s.ellipse_index, 10) - 1)) }),
-  blocks: (p) => [
-    B.chart(`第 ${p.ellipse_index + 1} 组椭圆：采样点与拟合曲线`,
-      [series("原始可辨椭圆", p.ellipse.original_points),
-       series("拟合结果", p.ellipse.fitted_points, { dashed: true }),
-       series("采样点", p.ellipse.original_points.filter((_, i) => i % 6 === 0), { mode: "scatter" })],
-      { xlabel: "CIE x", ylabel: "CIE y", height: 300 }),
-    B.table("拟合还原参数", ["参数", "原始", "拟合", "说明"], p.compare.map((row) => [row.parameter, row.original, row.fitted, row.note]), { mono: [1, 2] }),
-    B.table("二次型残差（应接近 0）", ["点", "x", "y", "残差"], p.residuals.map((row) => [row.point, num(row.x, 6), num(row.y, 6), row.residual]), { mono: [1, 2, 3] }),
-    B.kv("图元与线段", [
-      ...p.primitives.map((row) => [row.call, row.vertices_shape ? `顶点形状 ${JSON.stringify(row.vertices_shape)}` : "不可用", "geometry"]),
-      [p.segments[0].case, `交点 ${JSON.stringify(p.segments[0].point)}`, `intersect=${p.segments[0].intersect}`],
-      [p.segments[1].case, "无交点", `parallel=${p.segments[1].parallel}`],
-    ]),
-  ],
-};
-
-LIVE.optics = {
-  endpoint: "POST /api/v1/optics",
-  hint: "薄膜干涉 / 瑞利散射 / Michaelis–Menten：colour 也算物理光学。",
-  fields: [{ key: "thicknesses", label: "膜厚 nm（逗号分隔）", kind: "text", value: "200, 350, 500" }],
-  body: (s) => ({ thicknesses: splitList(s.thicknesses).map(Number) }),
-  blocks: (p) => [
-    B.chart("单层薄膜反射率（空气 / 膜 n=1.38 / 空气）",
-      p.film.curves.map((row) => series(row.name, row.wavelengths.map((w, i) => [w, row.values[i]]))),
-      { xlabel: "波长 / nm", ylabel: "R", height: 280, zero: true }),
-    B.table("薄膜数值", ["膜厚 nm", "R @550", "R 最大", "R 平均", "T 平均", "R+T"], p.film.rows.map((row) => [num(row.thickness_nm, 0), num(row.reflectance_550, 5), num(row.reflectance_max, 5), num(row.reflectance_mean, 5), num(row.transmittance_mean, 5), num(row.rt_sum_mean, 4)]), { mono: [1, 2, 3, 4, 5] }),
-    B.chart("瑞利散射", [series("散射强度", p.rayleigh.curve.wavelengths.map((w, i) => [w, p.rayleigh.curve.values[i]]))], { xlabel: "波长 / nm", ylabel: "相对强度", height: 240, zero: true }),
-    B.table("是否真的 1/λ⁴", ["波长比", "实测", "理论", "偏差 %"], p.rayleigh.rows.map((row) => [row.pair_nm, num(row.measured_ratio, 3), num(row.theory_ratio, 3), num(row.deviation_pct, 2)]), { mono: [1, 2, 3] }),
-    B.chart("Michaelis–Menten：经典式 vs Abebe 2017",
-      [series("Michaelis 1913", p.kinetics.substrate.map((s, i) => [s, p.kinetics.michaelis[i]])),
-       series("Abebe 2017", p.kinetics.substrate.map((s, i) => [s, p.kinetics.abebe[i]]))],
-      { xlabel: "底物浓度 S", ylabel: "反应速率 v", height: 240, zero: true }),
-  ],
-};
-
-LIVE.gallery = {
-  endpoint: "POST /api/v1/plot",
-  hint: "服务端 matplotlib 出图（全站唯一例外）：画幅/dpi 固定，返回 PNG。",
-  fields: [{ key: "plots", label: "要渲染的图（逗号分隔）", kind: "text", value: "visible-spectrum, blackbody, macadam-ellipses" }],
-  body: (s) => ({ plots: splitList(s.plots) }),
-  blocks: (p) => [
-    ...p.plots.map((row) => (row.png_base64
-      ? B.image(`data:image/png;base64,${row.png_base64}`, row.caption, `${row.width}px`)
-      : B.note(`${row.label} 渲染失败：${row.error}`, "warn"))),
-    B.table("plot_* 函数分组", ["分组", "数量", "举例"], p.groups.map((row) => [row.group, row.count, row.examples.join(" · ") + (row.more ? " …" : "")]), { mono: [1] }),
-  ],
-};
-
-/* ---- M4（面板 26–28）+ 收尾适配器（03/04/07） ---- */
-LIVE.observers = {
-  endpoint: "POST /api/v1/spectral",
-  hint: "观察者与光源：SPD 采样 + 黑体合成谱。",
-  fields: [
-    { key: "illuminant", label: "光源", kind: "select", options: ["D65", "D50", "A", "FL2", "FL11"], value: "D65" },
-    { key: "blackbody", label: "叠加黑体 K（空=不叠）", kind: "text", value: "5000" },
-  ],
-  body: (s) => ({ illuminant: s.illuminant, start: 380, end: 780, interval: 5, blackbody_temperature: s.blackbody ? Number(s.blackbody) : null }),
-  blocks: (p) => [
-    B.chart("光谱功率分布",
-      p.series.map((row) => series(row.name, row.wavelengths.map((w, i) => [w, row.values[i]]))),
-      { xlabel: "波长 / nm", ylabel: "相对功率", height: 280, zero: true }),
-    B.table("曲线摘要", ["系列", "峰值", "均值"], p.series.map((row) => [row.name, num(row.peak, 2), num(row.mean, 2)]), { mono: [1, 2] }),
-    B.kv("口径", [
-      ["采样", `${p.shape.samples} 点（${p.shape.start}–${p.shape.end} nm / ${p.shape.interval} nm）`, "SpectralShape"],
-      ["观察者", p.observers.slice(0, 3).join(" · "), "MSDS_CMFS"],
-      ["光源总数", String(p.illuminants_total), "SDS_ILLUMINANTS"],
-    ]),
-  ],
-};
-
-LIVE.photometry = {
-  endpoint: "POST /api/v1/photometry",
-  hint: "明度（7 种）/ 亮度 / 白度 / 黄度：注意 Y 走 0–100 域。",
-  fields: [{ key: "colors", label: "颜色", kind: "text", value: "#808080, #3B82F6, #E9C46A" }],
-  body: (s) => ({ colors: splitList(s.colors) }),
-  blocks: (p) => [
-    B.table("明度（7 种算法）", ["颜色", "Y（0–100）", ...Object.keys(p.rows[0].lightness)],
-      p.rows.map((row) => [row.hex, num(row.Y, 2), ...Object.values(row.lightness).map((v) => (typeof v === "number" ? num(v, 2) : v))]),
-      { mono: [0, 1] }),
-    B.table("白度 / 黄度", ["颜色", ...Object.keys(p.rows[0].whiteness).slice(0, 3), ...Object.keys(p.rows[0].yellowness).slice(0, 2)],
-      p.rows.map((row) => [row.hex,
-        ...Object.values(row.whiteness).slice(0, 3).map((v) => (typeof v === "number" ? num(v, 2) : v)),
-        ...Object.values(row.yellowness).slice(0, 2).map((v) => (typeof v === "number" ? num(v, 2) : v))]),
-      { mono: [0], note: p.domain }),
-  ],
-};
-
-LIVE["rgb-spaces"] = {
-  endpoint: "GET /api/v1/spaces",
-  hint: "96 个 RGB 色彩空间的基色、白点与传递函数。",
-  fields: [{ key: "limit", label: "显示前 N 个", kind: "select", options: ["10", "20", "96"], value: "10" }],
-  query: (s) => ({ limit: s.limit }),
-  body: null,
-  blocks: (p) => [
-    B.table(`RGB 色彩空间（共 ${p.total} 个，显示 ${p.count} 个）`, ["名称", "基色", "白点", "传递函数", "线性"],
-      p.spaces.map((row) => [row.name,
-        (row.primaries || []).map((xy) => `(${num(xy[0], 3)}, ${num(xy[1], 3)})`).join(" "),
-        row.whitepoint ? `(${num(row.whitepoint[0], 4)}, ${num(row.whitepoint[1], 4)})` : "—",
-        row.cctf, row.linear ? "是" : "否"]),
-      { mono: [0, 2, 3] }),
-  ],
-};
-
-LIVE.catalog = {
-  endpoint: "GET /api/v1/catalog",
-  hint: "1284 条子模块导出 × 归属状态，可按关键字/状态过滤。",
-  fields: [
-    { key: "q", label: "关键字", kind: "text", value: "" },
-    { key: "status", label: "状态", kind: "select", options: ["全部", "面板", "数据集", "内部"], value: "全部" },
-  ],
-  query: (s) => ({ q: s.q || "", status: s.status === "全部" ? "" : s.status, limit: 60 }),
-  body: null,
-  blocks: (p) => [
-    { type: "stats", title: "覆盖口径", items: [
-      [String(p.total), "子模块导出", "25 个子模块"],
-      [String(p.counts["面板"]), "面板", "可填表单的入口"],
-      [String(p.counts["数据集"]), "数据集", "下拉框里的选项"],
-      [String(p.counts["内部"]), "内部复用", "utilities / algebra / hints"],
-      [`${p.coverage}%`, "覆盖率", "不允许未分类"],
-    ] },
-    B.table(`匹配 ${p.matched} 条（显示前 ${p.rows.length} 条）`, ["子模块", "名称", "类型", "归属面板", "状态"],
-      p.rows.map((row) => [row.module, row.name, row.kind, row.target + (p.panel_titles[row.target] ? ` ${p.panel_titles[row.target]}` : ""), row.status]),
-      { mono: [1] }),
-    B.table("子模块分布", ["子模块", "导出数", "主归属"], p.modules.map((row) => [row.name, row.count, `${row.panel} ${row.panel_title}`]), { mono: [1] }),
-  ],
-};
-
-LIVE.invoke = {
-  endpoint: "POST /api/v1/catalog/invoke",
-  hint: "白名单调用：选函数 → 按声明填参数（JSON）→ 服务端校验后调 colour，不用 eval。",
-  fields: () => {
-    const list = (api.whitelist || []).map((row) => row.name);
-    return [
-      { key: "function", label: "函数（白名单）", kind: "select", options: list.length ? list : ["（先连上服务端）"], value: list[0] || "" },
-      { key: "params", label: "参数（JSON）", kind: "text", value: JSON.stringify((api.whitelist && api.whitelist[0] && api.whitelist[0].example) || {}) },
-    ];
-  },
-  body: (s) => {
-    let params = {};
-    try { params = JSON.parse(s.params || "{}"); } catch (error) { params = {}; }
-    return { function: s.function, params };
-  },
-  blocks: (p) => [
-    B.kv("调用结果", [
-      ["函数", p.function, p.panel ? `面板 ${p.panel}` : ""],
-      ["返回", p.returns, "按白名单声明"],
-      ["参数", JSON.stringify(p.request.keyword && Object.keys(p.request.keyword).length ? { positional: p.request.positional, keyword: p.request.keyword } : p.request.positional), "已校验"],
-      ["结果", JSON.stringify(p.result), ""],
-    ]),
-    B.json("响应片段", { result: p.result, warnings: p.warnings.map((w) => w.message) }),
-  ],
-};
-
-LIVE.api = {
-  endpoint: "GET /openapi.json",
-  hint: "面板 28 就是 FastAPI 自动生成的 OpenAPI：路径、请求体与错误模型都在这里。",
-  fields: [],
-  body: null,
-  blocks: (p) => [
-    B.kv("规范", [
-      ["标题", p.info.title, ""],
-      ["版本", p.info.version, "colour-demo"],
-      ["路径数", String(Object.keys(p.paths).length), "含 /health、/demo"],
-    ]),
-    B.table("端点与摘要", ["路径", "方法", "摘要"],
-      Object.entries(p.paths).flatMap(([path, methods]) => Object.entries(methods).map(([method, spec]) => [path, method.toUpperCase(), spec.summary || "—"])),
-      { mono: [0, 1] }),
-  ],
-};
-
-function renderField(field) {
-  const key = `data-live-key="${field.key}"`;
-  if (field.kind === "select") {
-    return `<div class="field"><span>${esc(field.label)}</span><select ${key}>${field.options.map((option) => `<option${option === field.value ? " selected" : ""}>${esc(option)}</option>`).join("")}</select></div>`;
-  }
-  if (field.kind === "range") {
-    return `<div class="field"><span>${esc(field.label)}</span><div class="range-row"><input type="range" ${key} min="${field.min}" max="${field.max}" step="${field.step}" value="${esc(field.value)}"><output data-live-out="${field.key}">${esc(field.value)}</output></div></div>`;
-  }
-  return `<div class="field"><span>${esc(field.label)}</span><input type="text" ${key} value="${esc(field.value)}"></div>`;
-}
-
-function liveFields(spec) {
-  return typeof spec.fields === "function" ? spec.fields() : spec.fields || [];
-}
-
-function collectState(spec) {
-  const state = {};
-  liveFields(spec).forEach((field) => {
-    const element = document.querySelector(`[data-live-key="${field.key}"]`);
-    if (element) state[field.key] = element.value;
-  });
-  return state;
-}
-
-function renderTrace(spec, state, payload, elapsed, request) {
-  const body = spec.query ? spec.query(state) : request;
-  return `<details class="trace"><summary>请求 / 响应 JSON（${elapsed} ms）</summary>
-    <div class="code"><pre>${highlight(JSON.stringify({ endpoint: spec.endpoint, body }, null, 2))}</pre></div>
-    <div class="code"><pre>${highlight(JSON.stringify(payload, null, 2))}</pre></div></details>`;
-}
-
-async function runLive(panel, spec) {
-  const out = $("#live-out");
-  const status = $("#live-status");
-  if (!out) return;
-  const state = collectState(spec);
-  status.textContent = `调用 ${spec.endpoint} …`;
-  try {
-    if (spec.dataEndpoint) {
-      // 色度图要分两个端点取：图是 SVG，数据是 JSON（面积/归属表）；
-      // 其余 GET 适配器（目录/空间图鉴）只有 query，不要走这个分支
-      const dataSpec = { endpoint: spec.dataEndpoint, query: spec.query };
-      const { payload, elapsed } = await apiCall(dataSpec, state);
-      out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, null);
-      status.textContent = `实时结果 · ${spec.endpoint} + ${spec.dataEndpoint} · colour ${api.version}`;
-    } else {
-      const { payload, elapsed, request } = await apiCall(spec, state);
-      out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, request);
-      status.textContent = `实时结果 · ${elapsed} ms · ${spec.endpoint} · colour ${api.version}`;
-    }
-  } catch (error) {
-    out.innerHTML = `<div class="note-box note-warn"><span class="b">调用失败</span><span>${esc(error.message)}</span></div>`;
-    status.textContent = "调用失败：先启动服务端 .venv/bin/python -m uvicorn colour_demo.main:app --port 8000";
-  }
-}
-
-
-/* ---------------- chart ---------------- */
-function renderChart(b) {
-  const W = 880, H = b.height || 260;
-  const series = b.series.filter((s) => s.points.length);
-  const colors = ["#2A9D8F", "#3B82F6", "#E76F51", "#E9C46A", "#8E44AD", "#264653", "#F4A261", "#111827"];
-  // 图例按估算文字宽度分行排布：固定间距会让长名字（中文/括号）互相压字
-  const PAD_L = 46, PAD_R = 26, PAD_B = 30;  // 右侧留白要够放最后一个 X 刻度标签
-  const textWidth = (s) => [...s].reduce((w, ch) => w + (/[\u2E80-\u9FFF\uFF00-\uFFEF]/.test(ch) ? 10.5 : 5.8), 0);
-  const legendItems = series
-    .filter((s) => s.mode !== "scatter" || series.length < 9)
-    .slice(0, 8)
-    .map((s) => ({ name: s.name, color: s.color || colors[series.indexOf(s) % colors.length] }));
-  const legendRows = [];
-  let rowItems = [], rowWidth = 0;
-  legendItems.forEach((it) => {
-    const itemWidth = 14 + textWidth(it.name) + 16;
-    if (rowItems.length && rowWidth + itemWidth > W - PAD_L - PAD_R) {
-      legendRows.push(rowItems);
-      rowItems = [];
-      rowWidth = 0;
-    }
-    rowItems.push(it);
-    rowWidth += itemWidth;
-  });
-  if (rowItems.length) legendRows.push(rowItems);
-  // 图例单独占顶部带，避免落在绘图区里被曲线压住
-  const legendBand = legendRows.length * 18;
-  const pad = { l: PAD_L, r: PAD_R, t: 12 + legendBand, b: PAD_B };
-  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
-  series.forEach((s) => s.points.forEach(([x, y]) => {
-    if (isFinite(x)) { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); }
-    if (isFinite(y)) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
-  }));
-  if (!isFinite(xmin)) return "";
-  if (b.zero) ymin = Math.min(0, ymin);
-  if (ymin === ymax) { ymin -= 1; ymax += 1; }
-  const sx = (x) => pad.l + ((x - xmin) / (xmax - xmin || 1)) * (W - pad.l - pad.r);
-  const sy = (y) => H - pad.b - ((y - ymin) / (ymax - ymin || 1)) * (H - pad.t - pad.b);
-
-  const ticksY = 5, ticksX = 6;
-  let grid = "", axis = "";
-  for (let i = 0; i <= ticksY; i++) {
-    const value = ymin + ((ymax - ymin) * i) / ticksY;
-    const y = sy(value);
-    grid += `<line x1="${pad.l}" y1="${y}" x2="${W - pad.r}" y2="${y}" stroke="#EFEFEA" stroke-width="1"/>`;
-    axis += `<text x="${pad.l - 6}" y="${y + 3}" text-anchor="end">${fmt(value, ymax - ymin)}</text>`;
-  }
-  for (let i = 0; i <= ticksX; i++) {
-    const value = xmin + ((xmax - xmin) * i) / ticksX;
-    const x = sx(value);
-    axis += `<line x1="${x}" y1="${H - pad.b}" x2="${x}" y2="${H - pad.b + 3}" stroke="#D3D3CB" stroke-width="1"/>`;
-    axis += `<text x="${x}" y="${H - pad.b + 14}" text-anchor="middle">${fmt(value, xmax - xmin)}</text>`;
-  }
-  let paths = "";
-  series.forEach((s, i) => {
-    const color = s.color || colors[i % colors.length];
-    if (s.mode === "scatter") {
-      paths += s.points.map(([x, y]) => `<circle cx="${sx(x)}" cy="${sy(y)}" r="2.2" fill="${color}"/>`).join("");
-    } else if (s.mode === "bar") {
-      const w = Math.max(2, (W - pad.l - pad.r) / s.points.length * 0.7);
-      paths += s.points.map(([x, y]) => {
-        const x0 = sx(x) - w / 2;
-        const y0 = sy(Math.max(0, y));
-        return `<rect x="${x0}" y="${y0}" width="${w}" height="${Math.abs(sy(y) - sy(0))}" fill="${color}" opacity="0.85"/>`;
-      }).join("");
-    } else {
-      const d = s.points.map(([x, y], k) => `${k === 0 ? "M" : "L"}${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
-      paths += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" ${s.dashed ? 'stroke-dasharray="4 3"' : ""} stroke-linejoin="round"/>`;
-    }
-  });
-  const legend = legendRows
-    .map((items, rowIndex) => {
-      const y = 12 + rowIndex * 18;
-      let x = pad.l;
-      return items
-        .map((it) => {
-          const gx = x;
-          x += 14 + textWidth(it.name) + 16;
-          return `<g><rect x="0" y="0" width="10" height="3" rx="1.5" fill="${it.color}" transform="translate(${gx},${y})"/>
-            <text class="legend" x="${gx + 14}" y="${y + 4}" fill="#555A63">${esc(it.name)}</text></g>`;
-        })
-        .join("");
-    })
-    .join("");
-
-  return `<div class="chart-wrap">
-    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(b.title || b.caption || "chart")}">
-      ${grid}${paths}${axis}
-      <text x="${W - pad.r}" y="${H - 4}" text-anchor="end">${esc(b.xlabel || "")}</text>
-      ${b.ylabel ? `<text transform="translate(11,${(H - pad.b + pad.t) / 2}) rotate(-90)" text-anchor="middle">${esc(b.ylabel)}</text>` : ""}
-      ${legend}
-    </svg>
-    ${b.caption ? `<div class="chart-caption">${esc(b.caption)}</div>` : ""}
-  </div>`;
-}
-
-/* ---------------- blocks ---------------- */
-function blockTitle(b) {
-  return b.title ? `<div class="card-head"><h2>${esc(b.title)}</h2></div>` : "";
-}
-
-function renderBlock(b) {
-  switch (b.type) {
-    case "kv":
-      return `<div class="card">${blockTitle(b)}<div class="card-body"><table class="kv">${b.rows
-        .map(([k, v, n]) => `<tr><td class="k">${esc(k)}</td><td class="v">${esc(v)}</td><td class="n">${esc(n || "")}</td></tr>`)
-        .join("")}</table></div></div>`;
-    case "stats":
-      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="stats">${b.items
-        .map(([v, k, n]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}${n ? " · " + esc(n) : ""}</span></div>`)
-        .join("")}</div></div></div>`;
-    case "matrix": {
-      const max = Math.max(...b.values.flat().filter((v, i) => Number.isFinite(v)));
-      const head = `<tr><th></th>${b.colors.map((_, i) => `<th>${i + 1}</th>`).join("")}</tr>`;
-      const body = b.values
-        .map((row, i) => `<tr><th>${i + 1}</th>${row
-          .map((v, j) => {
-            if (i === j) return `<td class="diag">—</td>`;
-            const t = Math.min(1, v / (max || 1));
-            return `<td style="background:rgba(59,130,246,${(0.06 + 0.5 * t).toFixed(3)});color:${t > 0.62 ? "#0B2A5B" : "#15161A"}">${v.toFixed(1)}</td>`;
-          })
-          .join("")}</tr>`)
-        .join("");
-      return `<div class="card">${blockTitle(b)}<div class="card-body">
-        <div class="matrix-head">${b.colors.map((c, i) => `<span class="tag" style="gap:5px"><i style="background:${c}"></i>${i + 1}. ${c}</span>`).join("")}</div>
-        <table class="matrix">${head}${body}</table>
-        ${b.caption ? `<div class="table-note">${esc(b.caption)}</div>` : ""}
-      </div></div>`;
-    }
-    case "swatches":
-      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="sw-grid" style="grid-template-columns:repeat(${b.cols},minmax(0,1fr))">${b.items
-        .map((it) => `<div class="sw"><div class="sw-color" style="background:${it.hex}"></div><div class="sw-hex">${esc(it.label)}</div>${it.sub ? `<div class="sw-sub">${esc(it.sub)}</div>` : ""}</div>`)
-        .join("")}</div></div></div>`;
-    case "strips":
-      return `<div class="card">${blockTitle(b)}<div class="card-body">${b.items
-        .map((s) => {
-          const grad = `linear-gradient(90deg, ${s.colors.join(", ")})`;
-          const cells = s.colors.map((c) => `<div class="step" style="background:${c}" title="${c}"></div>`).join("");
-          return `<div class="strip-block">
-            <div class="strip-head"><h3>${esc(s.label)}</h3><span class="note">${esc(s.note)}</span>
-              <div class="stats">${s.stats.map(([k, v]) => `<span class="tag">${esc(k)} ${esc(v)}</span>`).join("")}</div></div>
-            <div class="bar" style="background:${grad}"></div>
-            <div class="steps" style="grid-template-columns:repeat(${s.colors.length},minmax(0,1fr))">${cells}</div>
-          </div>`;
-        })
-        .join("")}${b.caption ? `<div class="table-note">${esc(b.caption)}</div>` : ""}</div></div>`;
-    case "table": {
-      const filterable = b.rows.length > 40;
-      return `<div class="card">${blockTitle(b)}<div class="card-body">
-        <div class="table-wrap"><table class="data" ${filterable ? 'data-filterable="1"' : ""}>
-          <thead><tr>${b.head.map((h, i) => `<th${b.widths ? ` style="width:${b.widths[i] || "auto"}"` : ""}>${esc(h)}</th>`).join("")}</tr></thead>
-          <tbody>${b.rows.map((row) => `<tr>${row.map((cell, i) => `<td class="${(b.mono || []).includes(i) ? "mono" : ""}">${esc(cell)}</td>`).join("")}</tr>`).join("")}</tbody>
-        </table></div>
-        ${b.note ? `<div class="table-note">${esc(b.note)}</div>` : ""}
-      </div></div>`;
-    }
-    case "chart":
-      return `<div class="card">${blockTitle(b)}<div class="card-body">${renderChart(b)}</div></div>`;
-    case "image":
-      return `<div class="card"><div class="card-body"><figure class="fig"><img src="${b.src}" alt="${esc(b.alt)}" style="max-width:${b.maxw || "520px"}">${b.caption ? `<figcaption>${esc(b.caption)}</figcaption>` : ""}</figure></div></div>`;
-    case "note":
-      return `<div class="note-box ${b.tone === "warn" ? "note-warn" : "note-info"}"><span class="b">${esc(b.title || (b.tone === "warn" ? "注意" : "说明"))}</span><span>${esc(b.text)}</span></div>`;
-    case "json":
-      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="code"><button class="copy" data-copy>复制</button><pre>${highlight(b.code)}</pre></div></div></div>`;
-    case "cards":
-      return `<div class="card">${blockTitle(b)}<div class="card-body"><div class="cards">${b.items
-        .map((it) => `<div class="mini"><h3>${esc(it.title)}</h3><p>${esc(it.text)}</p><code>${esc(it.foot)}</code></div>`)
-        .join("")}</div></div></div>`;
-    case "chain":
-      return `<div class="card"><div class="card-body"><div class="chain">${b.nodes
-        .map(([name, color, desc]) => `<div class="chain-node"><div class="chain-bar" style="background:${color}"></div><strong>${esc(name)}</strong><p>${esc(desc)}</p></div>`)
-        .join("")}</div></div></div>`;
-    default:
-      return "";
-  }
-}
-
-/* ---------------- panels ---------------- */
-function renderControls(panel) {
-  const spec = LIVE[panel.id];
-  if (spec && api.ok) {
-    return `<div class="controls">${liveFields(spec).map(renderField).join("")}
-      <div class="field field--run"><span>&nbsp;</span><button id="run-live" type="button">调用 API</button></div>
-    </div>
-    <div class="ctrl-note" id="live-status">${esc(spec.hint || "改完参数点「调用 API」，结果由服务端现算。")}</div>`;
-  }
-  if (!panel.controls.length) return "";
-  return `<div class="controls">${panel.controls
-    .map((c) => {
-      if (c.kind === "color") {
-        return `<div class="field"><span>${esc(c.label)}</span><div class="color-field"><input type="color" value="${esc(c.value)}" disabled><input type="text" value="${esc(c.value)}" disabled></div></div>`;
-      }
-      if (c.kind === "select") {
-        return `<div class="field"><span>${esc(c.label)}</span><select disabled>${c.options.map((o) => `<option${o === c.value ? " selected" : ""}>${esc(o)}</option>`).join("")}</select></div>`;
-      }
-      if (c.kind === "range") {
-        return `<div class="field"><span>${esc(c.label)}</span><input type="range" min="0" max="100" step="5" value="${esc(c.value)}" disabled></div>`;
-      }
-      return `<div class="field"><span>${esc(c.label)}</span><input type="text" value="${esc(c.value)}" disabled></div>`;
-    })
-    .join("")}</div>
-    <div class="ctrl-note">${spec ? "本页有实时适配器，但没连上本地服务端：启动 <code>uvicorn colour_demo.main:app --port 8000</code> 后刷新即可切换为实时调用。" : "原型为静态快照：导航与能力目录搜索可用，其余控件为样式占位（正式版接 API 后启用）。"}</div>`;
-}
-
-function renderPanel(panel) {
-  const spec = LIVE[panel.id];
-  const liveCapable = Boolean(spec) && api.ok;
-  const snapshot = panel.blocks.map(renderBlock).join("");
-  $("#main").innerHTML = `
-    <div class="panel-head">
-      <div class="eyebrow">Panel ${panel.no} · ${esc(panel.group)}
-        <span class="tag ${PHASE_CLASS[panel.phase] || ""}" style="margin-left:8px">${esc(panel.phase)}</span>
-        ${panel.pending ? '<span class="tag tag--pending" style="margin-left:6px">数据待补充</span>' : ""}
-        ${liveCapable ? '<span class="tag tag--m2" style="margin-left:6px">实时 API</span>' : ""}</div>
-      <h1>${esc(panel.title)}</h1>
-      <p class="lead">${panel.lead.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>
-    </div>
-    <div class="card">${renderControls(panel)}</div>
-    ${liveCapable
-      ? `<div class="live-out" id="live-out"></div>
-         <details class="snapshot"><summary>静态快照 · 构建时由 colour ${esc(DATA.lib.version)} 计算（离线可用）</summary>${snapshot}</details>`
-      : snapshot}
-    <footer class="page-foot">${panel.footer.replace(/`([^`]+)`/g, "<code>$1</code>")}<br>
-      本页快照数据由 <code>colour-science ${DATA.lib.version}</code> 于构建时计算；APIs：${panel.apis.map((a) => `<code>${esc(a)}</code>`).join(" · ")}</footer>`;
-  wirePanel(panel);
-}
-
-/* 能力目录：真实可用的搜索与状态过滤 */
-function wirePanel(panel) {
-  const spec = LIVE[panel.id];
-  if (spec && api.ok) {
-    const run = $("#run-live");
-    if (run) run.addEventListener("click", () => runLive(panel, spec));
-    document.querySelectorAll("[data-live-key]").forEach((element) => {
-      element.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") runLive(panel, spec);
-      });
-      element.addEventListener("change", () => {
-        const mirror = document.querySelector(`[data-live-out="${element.dataset.liveKey}"]`);
-        if (mirror) mirror.textContent = element.value;
-      });
-    });
-    // 打开面板就先跑一次：这一页的控件不是摆设，数字是现算的
-    runLive(panel, spec);
-    return;
-  }
-  if (panel.id !== "catalog") return;
-  const search = $(".controls input[type=text]");
-  const status = $(".controls select");
-  const rows = Array.from(document.querySelectorAll('table.data[data-filterable] tbody tr'));
-  const apply = () => {
-    const q = (search?.value || "").toLowerCase();
-    const st = status?.value || "全部";
-    rows.forEach((tr) => {
-      const text = tr.textContent.toLowerCase();
-      const cells = tr.children;
-      const rowStatus = cells[cells.length - 1].textContent.trim();
-      tr.style.display = (!q || text.includes(q)) && (st === "全部" || rowStatus === st) ? "" : "none";
-    });
-  };
-  if (search) { search.disabled = false; search.addEventListener("input", apply); }
-  if (status) { status.disabled = false; status.addEventListener("change", apply); }
-  const note = document.querySelector(".ctrl-note");
-  if (note) note.textContent = "本页控件在本原型中真实可用：输入关键字过滤名称，或按状态（面板 / 数据集 / 内部）筛选。";
-}
-
-/* ---------------- nav ---------------- */
-function buildNav() {
-  const groups = DATA.groups;
-  $("#side").innerHTML = groups
-    .map((g) => `<div class="side-group"><div class="side-label">${esc(g)}</div>${DATA.panels
-      .filter((p) => p.group === g)
-      .map((p) => `<button class="nav-btn" data-id="${p.id}"><span class="nav-index">${p.no}</span>${esc(p.title)}${p.pending ? '<span class="nav-pending" title="数据待补充"></span>' : ""}<span class="nav-phase">${esc(p.phase)}</span></button>`)
-      .join("")}</div>`)
-    .join("") + `<div class="side-foot">全部 ${DATA.catalog.total} 个公开名称均已归属：面板 ${DATA.catalog.counts["面板"]} · 数据集 ${DATA.catalog.counts["数据集"]} · 内部 ${DATA.catalog.counts["内部"]}。</div>`;
-  document.querySelectorAll(".nav-btn").forEach((btn) =>
-    btn.addEventListener("click", () => {
-      location.hash = btn.dataset.id;
-    })
-  );
-}
-
-function activate(id) {
-  const panel = DATA.panels.find((p) => p.id === id) || DATA.panels[0];
-  document.querySelectorAll(".nav-btn").forEach((b) => {
-    if (b.dataset.id === panel.id) b.setAttribute("aria-current", "page");
-    else b.removeAttribute("aria-current");
-  });
-  renderPanel(panel);
-  window.scrollTo(0, 0);
-}
-
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-copy]");
-  if (!btn) return;
-  copyText(btn.parentElement.querySelector("pre").textContent);
-});
-
-buildNav();
-$("#lib-version").textContent = DATA.lib.version;
-$("#chip-coverage").innerHTML = `${DATA.catalog.total} 条导出全部归属 · ${DATA.catalog.coverage.toFixed(1)}%`;
-$("#chip-progress").textContent = `面板数据 ${DATA.stats.ready}/${DATA.panels.length} 已出`;
-window.addEventListener("hashchange", () => activate(location.hash.slice(1)));
-// 先探一次 /api/v1/health：在线就把整站切成实时调用，离线就退回静态快照
-apiProbe().finally(() => activate(location.hash.slice(1) || DATA.panels[0].id));
+/*__UI__*/
 </script>
 </body>
 </html>

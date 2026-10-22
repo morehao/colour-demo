@@ -46,6 +46,7 @@ def test_legacy_redirects_point_to_new_routes():
 # --------------------------------------------------------------------------- #
 def test_task_references_are_valid():
     for task in TASKS:
+        assert task.get("nav"), task["id"]
         assert task["tool"] in PANEL_IDS, task["id"]
         assert task["tool"] in manifest.LIVE_PANEL_IDS, task["id"]
         assert task["outcome"] in verdicts.VERDICTS, task["id"]

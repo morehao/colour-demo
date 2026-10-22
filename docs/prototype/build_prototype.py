@@ -29,6 +29,21 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CACHE = HERE.parents[1] / ".tmp" / "panels"
 CACHE.mkdir(parents=True, exist_ok=True)
+
+# UI 源码按固定顺序拼接；禁止 import/export，禁止出现 </script>
+UI_FILES = [
+    "core.js",
+    "glossary.js",
+    "blocks.js",
+    "charts.js",
+    "components.js",
+    "adapters.js",
+    "adapters-late.js",
+    "live.js",
+    "panels.js",
+    "tasks.js",
+    "app.js",
+]
 os.environ.setdefault("MPLCONFIGDIR", str(HERE.parents[1] / ".tmp" / "mpl"))
 os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
 
@@ -491,11 +506,21 @@ def merge(*, strict: bool, started: float) -> None:
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     template = (HERE / "index.template.html").read_text(encoding="utf-8")
-    html = template.replace("/*__DATA__*/", payload)
-
-    # W2 起 UI 源码拆到 ui/*.js，由这里拼接；当前还没有该目录
-    ui_dir = HERE / "ui"
-    ui_bytes = sum(path.stat().st_size for path in ui_dir.glob("*.js")) if ui_dir.exists() else 0
+    ui_parts = []
+    for name in UI_FILES:
+        path = HERE / "ui" / name
+        if not path.exists():
+            raise SystemExit(f"缺少 UI 源文件：{path}")
+        source = path.read_text(encoding="utf-8")
+        if "</script>" in source:
+            raise SystemExit(f"{name} 含 </script>，拼接后会截断页面")
+        lines = len(source.splitlines())
+        if lines > 400:
+            raise SystemExit(f"{name} 有 {lines} 行，超过 400 行上限，请继续拆分")
+        ui_parts.append(source)
+    ui = "\n\n".join(ui_parts)
+    html = template.replace("/*__UI__*/", ui).replace("/*__DATA__*/", payload)
+    ui_bytes = len(ui.encode())
 
     run_gates(data, strict=strict, html_bytes=len(html.encode()), ui_bytes=ui_bytes)
     (HERE / "index.html").write_text(html, encoding="utf-8")

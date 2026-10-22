@@ -12,6 +12,7 @@ VERDICTS: dict[str, dict] = {
     "deltaE": {
         "kind": "band",
         "unit": "ΔE",
+        "unit_position": "prefix",
         "precision": 1,
         "bands": [
             {"lt": 1, "label": "几乎看不出", "tone": "ok", "say": "只有仪器能测出差别，肉眼分不出。"},
@@ -47,6 +48,7 @@ VERDICTS: dict[str, dict] = {
     "cvd": {
         "kind": "band",
         "unit": "ΔE",
+        "unit_position": "prefix",
         "precision": 1,
         "bands": [
             {"lt": 3, "label": "几乎分不清", "tone": "bad", "say": "这两个颜色会糊在一起，建议换掉其中一个。"},

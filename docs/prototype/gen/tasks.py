@@ -15,6 +15,7 @@ from __future__ import annotations
 TASKS: list[dict] = [
     {
         "id": "purity",
+        "nav": "鲜艳度",
         "no": "T1",
         "title": "这个颜色，够鲜艳吗？",
         "intro": "选几个颜色，看看它们离灰有多远、最接近哪种单色光。",
@@ -66,6 +67,7 @@ TASKS: list[dict] = [
     },
     {
         "id": "delta-e",
+        "nav": "色差",
         "no": "T2",
         "title": "这两个颜色，差得明显吗？",
         "intro": "选两个颜色，30 秒得到一个能直接用的判断。",
@@ -118,6 +120,7 @@ TASKS: list[dict] = [
     },
     {
         "id": "gradient",
+        "nav": "渐变",
         "no": "T3",
         "title": "渐变为什么中间发灰？",
         "intro": "同一个起点和终点，换一种过渡方式，中间那段会完全不同。",
@@ -164,6 +167,7 @@ TASKS: list[dict] = [
     },
     {
         "id": "cvd",
+        "nav": "色弱",
         "no": "T4",
         "title": "色弱的人能分清这套配色吗？",
         "intro": "贴上你的配色，看看红绿色弱的人会把它看成什么样。",
@@ -226,6 +230,7 @@ TASKS: list[dict] = [
     },
     {
         "id": "light",
+        "nav": "换灯",
         "no": "T5",
         "title": "换一盏灯，颜色还一样吗？",
         "intro": "同一支颜色，在白炽灯下和日光下，看起来会差多少？",
@@ -272,6 +277,7 @@ TASKS: list[dict] = [
     },
     {
         "id": "notation",
+        "nav": "色号",
         "no": "T6",
         "title": "这个色号，换成别的写法是多少？",
         "intro": "把色号、颜色名或 Munsell 记号粘进来，翻译成同一套坐标。",

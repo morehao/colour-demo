@@ -705,11 +705,13 @@ docs/prototype/
 ├── ui/
 │   ├── core.js                # 工具、格式化、路由、模式、存储
 │   ├── glossary.js            # 术语高亮与浮层
-│   ├── components.js          # 颜色输入、方法选择、结论卡、对比、分享
 │   ├── blocks.js              # 通用块渲染（table/matrix/kv/strips/...）
 │   ├── charts.js              # SVG 折线/散点/柱
-│   ├── live.js                # 适配器（从模板迁出，逻辑不变）
-│   ├── panels.js              # 参考面板视图
+│   ├── components.js          # 颜色输入、方法选择、结论卡、预设、步骤
+│   ├── adapters.js            # M2 面板适配器（01/02/05/09/10/11/14/18）
+│   ├── adapters-late.js       # M3/M4 面板适配器（19–28、03/04/07）
+│   ├── live.js                # API 探测/调用 + 实时结果运行器
+│   ├── panels.js              # 参考面板视图（含新手过渡说明）
 │   ├── tasks.js               # 6 个任务页视图
 │   └── app.js                 # 启动、导航、搜索、导览
 ├── gen/
@@ -747,7 +749,8 @@ PYTHONPATH=src python docs/prototype/build_prototype.py --merge
 ```python
 UI_DIR = HERE / "ui"
 UI_FILES = ["core.js", "glossary.js", "blocks.js", "charts.js",
-            "components.js", "live.js", "panels.js", "tasks.js", "app.js"]
+            "components.js", "adapters.js", "adapters-late.js",
+            "live.js", "panels.js", "tasks.js", "app.js"]
 ui = "\n\n".join((UI_DIR / name).read_text(encoding="utf-8") for name in UI_FILES)
 assert "</script>" not in ui, "UI 源码里不能出现 </script>"
 payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
@@ -912,6 +915,8 @@ function annotateTerms(root) {
 | W3 | 组件 | 颜色输入、方法选择、自动计算、结论卡、对比、术语浮层、分享 | 6 | W1 |
 | W4 | 6 个任务页 | 页面 + 结论规则 + 错误态 | 5 | W2、W3 |
 | W5 | 29 个面板新手层 | 人话头、预设、结论/怎么读、折叠 | 7 | W2、W3 |
+
+> 实施进度（2026-10-22）：W1 完成；W2 与 delta-e 样板页代码完成（M2 待评审）；W3 组件进行中。
 | W6 | 文案与术语审校 | 29 页四段式、40 条术语、8 个样例落地 | 5 | W5 并行 |
 | W7 | 测试与可用性 | 数据契约测试、回归清单、5 人测试、修复 | 3 | W4、W5 |
 | W8 | 文档与发布 | README/docs 索引、开关说明、回滚演练 | 1 | W7 |
@@ -1070,7 +1075,7 @@ function annotateTerms(root) {
 | 文件 | 变更 |
 | --- | --- |
 | `docs/prototype/index.template.html` | 外壳改版：顶栏、导航、`/*__UI__*/`、CSS 新增组件样式；删除内联脚本（迁至 `ui/`） |
-| `docs/prototype/ui/*.js` | 新增 9 个文件（§9.1） |
+| `docs/prototype/ui/*.js` | 新增 11 个文件（§9.1） |
 | `docs/prototype/gen/common.py` | `panel()` 扩展 + 文案校验 |
 | `docs/prototype/gen/panels_core.py` 等 4 个 | 29 个面板补 `title_plain/question/plain/why/presets/verdict/jargon` |
 | `docs/prototype/gen/manifest.py` | 新增：面板/实时面板/任务 id 单一来源 |
