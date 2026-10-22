@@ -72,7 +72,8 @@ VERDICTS: dict[str, dict] = {
     },
     "translate": {
         "kind": "custom",
-        "template": "{input} 就是 {hex}；Lab 是 {lab}；Munsell 记作 {munsell}。",
+        # RGB 三通道由快照直接给出；Lab 不在 /notation 响应里，不在这里硬凑
+        "template": "{input}就是 {hex}；RGB 是 {rgb}。",
     },
     "quality": {
         "kind": "custom",

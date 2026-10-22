@@ -7,6 +7,7 @@ CI 里跑得很快。
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -119,6 +120,20 @@ def test_verdicts_are_well_formed():
         for band in rule["bands"]:
             assert band["tone"] in verdicts.TONES, key
             assert band["label"] and band["say"], key
+
+
+def test_task_field_kinds_are_supported():
+    supported = {"colors", "color", "select", "method", "number", "notation"}
+    for task in TASKS:
+        for field in task["fields"]:
+            assert field["kind"] in supported, (task["id"], field["key"], field["kind"])
+
+
+def test_translate_template_uses_response_fields():
+    template = verdicts.VERDICTS["translate"]["template"]
+    placeholders = set(re.findall(r"\{(\w+)\}", template))
+    # /notation 不返回 Lab，模板只能用输入、HEX 和 RGB
+    assert placeholders <= {"input", "hex", "rgb"}, placeholders
 
 
 def test_shift_reuses_delta_e_bands():

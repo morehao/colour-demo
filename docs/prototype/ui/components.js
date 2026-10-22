@@ -26,6 +26,17 @@ const Verdict = {
     const rule = this.resolve(ruleId);
     return (rule && rule.unit) || "";
   },
+  text(ruleId, context) {
+    const rule = this.resolve(ruleId);
+    if (!rule || !rule.template) return "";
+    return rule.template.replace(/\{(\w+)\}/g, (_, key) => (context[key] == null ? "" : String(context[key])));
+  },
+  plain({ title, html, tone = "ok" } = {}) {
+    return `<section class="verdict verdict--${tone}">
+      ${title ? `<div class="verdict-title">${esc(title)}</div>` : ""}
+      <div class="verdict-say js-prose">${html}</div>
+    </section>`;
+  },
   card({ title, ruleId, value, extra, tone } = {}) {
     const band = this.band(ruleId, value);
     const rule = this.resolve(ruleId);

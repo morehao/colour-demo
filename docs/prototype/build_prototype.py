@@ -41,6 +41,8 @@ UI_FILES = [
     "adapters-late.js",
     "live.js",
     "panels.js",
+    "tasks-more.js",
+    "tasks-results.js",
     "tasks.js",
     "app.js",
 ]
@@ -232,12 +234,18 @@ def _task_call(task_id: str, state: dict) -> dict:
     if task_id == "gradient":
         from colour_demo.core.gradient import gradient_data
 
-        return gradient_data(
-            state["from"],
-            state["to"],
-            space=state.get("space", "Oklab"),
-            steps=int(state.get("steps", 11)),
-        )
+        # 任务页要并排比较三种过渡，快照一次把三个空间都算好
+        return {
+            "spaces": {
+                space: gradient_data(
+                    state["from"],
+                    state["to"],
+                    space=space,
+                    steps=int(state.get("steps", 11)),
+                )
+                for space in ("Oklab", "CIE Lab", "sRGB")
+            }
+        }
     if task_id == "cvd":
         from colour_demo.core.cvd import cvd_data
 

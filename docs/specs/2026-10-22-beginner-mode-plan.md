@@ -712,7 +712,9 @@ docs/prototype/
 │   ├── adapters-late.js       # M3/M4 面板适配器（19–28、03/04/07）
 │   ├── live.js                # API 探测/调用 + 实时结果运行器
 │   ├── panels.js              # 参考面板视图（含新手过渡说明）
-│   ├── tasks.js               # 6 个任务页视图
+│   ├── tasks-more.js          # 通用任务运行时 + T1/T3 结果
+│   ├── tasks-results.js       # T4/T5/T6 结果视图
+│   ├── tasks.js               # 任务分发 + T2 样板页
 │   └── app.js                 # 启动、导航、搜索、导览
 ├── gen/
 │   ├── common.py              # panel() 扩展 + 文案校验
@@ -750,7 +752,8 @@ PYTHONPATH=src python docs/prototype/build_prototype.py --merge
 UI_DIR = HERE / "ui"
 UI_FILES = ["core.js", "glossary.js", "blocks.js", "charts.js",
             "components.js", "adapters.js", "adapters-late.js",
-            "live.js", "panels.js", "tasks.js", "app.js"]
+            "live.js", "panels.js", "tasks-more.js",
+            "tasks-results.js", "tasks.js", "app.js"]
 ui = "\n\n".join((UI_DIR / name).read_text(encoding="utf-8") for name in UI_FILES)
 assert "</script>" not in ui, "UI 源码里不能出现 </script>"
 payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
@@ -915,14 +918,14 @@ function annotateTerms(root) {
 | W3 | 组件 | 颜色输入、方法选择、自动计算、结论卡、对比、术语浮层、分享 | 6 | W1 |
 | W4 | 6 个任务页 | 页面 + 结论规则 + 错误态 | 5 | W2、W3 |
 | W5 | 29 个面板新手层 | 人话头、预设、结论/怎么读、折叠 | 7 | W2、W3 |
-
-> 实施进度（2026-10-22）：W1 完成；W2 与 delta-e 样板页代码完成（M2 待评审）；W3 组件进行中。
 | W6 | 文案与术语审校 | 29 页四段式、40 条术语、8 个样例落地 | 5 | W5 并行 |
 | W7 | 测试与可用性 | 数据契约测试、回归清单、5 人测试、修复 | 3 | W4、W5 |
 | W8 | 文档与发布 | README/docs 索引、开关说明、回滚演练 | 1 | W7 |
 | | **合计** | | **35** | |
 
 > 35 人日是含审校与两轮可用性修复的完整口径；若砍掉 W6 的逐页润色、仅做模板化改写，可压到 28 人日，但不建议。
+
+> 实施进度（2026-10-22）：W1、W2 完成；W3 常用组件完成；W4 六个任务页代码完成（待评审）；W5/W6 待开始。
 
 ### 12.2 里程碑
 
@@ -1062,7 +1065,7 @@ function annotateTerms(root) {
 | `uniformity` | 各空间 `ratio` | `{best} 最均匀（{r}），{worst} 中段最挤（{r2}），所以看起来{现象}。` |
 | `cvd` | `min_adjacent_delta_e`, `pairs` | `{deficiency} 下，第 {i} 和第 {j} 个颜色只剩 {ΔE} 的差别（低于 3 就分不清）。` |
 | `shift` | `delta_e`, `clipped` | `换到 {target} 后差 {ΔE}（{label}）。{clipped ? "这个颜色超出屏幕范围，显示的是近似色。" : ""}` |
-| `translate` | `hex`, `lab`, `munsell` | `{input} 就是 {hex}；Lab 是 {lab}，Munsell 记作 {munsell}。` |
+| `translate` | `hex`, `rgb`, `munsell`（可选） | `{input}就是 {hex}；RGB 是 {rgb}。`；Munsell 仅在输入是 Munsell 时追加 |
 | `temperature` | `cct` | `{cct}K 属于{暖黄/中性/日光/偏冷}光。` |
 | `quality` | 四组指标 | `Ra {ra}、Qa {qa}、Rf {rf}、Rg {rg}——四个口径不完全一致，别只看 Ra。` |
 
@@ -1075,7 +1078,7 @@ function annotateTerms(root) {
 | 文件 | 变更 |
 | --- | --- |
 | `docs/prototype/index.template.html` | 外壳改版：顶栏、导航、`/*__UI__*/`、CSS 新增组件样式；删除内联脚本（迁至 `ui/`） |
-| `docs/prototype/ui/*.js` | 新增 11 个文件（§9.1） |
+| `docs/prototype/ui/*.js` | 新增 13 个文件（§9.1） |
 | `docs/prototype/gen/common.py` | `panel()` 扩展 + 文案校验 |
 | `docs/prototype/gen/panels_core.py` 等 4 个 | 29 个面板补 `title_plain/question/plain/why/presets/verdict/jargon` |
 | `docs/prototype/gen/manifest.py` | 新增：面板/实时面板/任务 id 单一来源 |

@@ -41,16 +41,16 @@ function renderTask(route) {
     return;
   }
   if (task.id === "delta-e") renderDeltaETask(task);
+  else if (typeof renderTaskPage === "function") renderTaskPage(task);
   else renderTaskPlaceholder(task);
 }
 
 function taskStateFor(task) {
   if (!State.taskState[task.id]) {
     const preset = task.presets[0];
-    State.taskState[task.id] = {
-      ...preset.state,
-      colors: preset.state.colors ? [...preset.state.colors] : preset.state.colors,
-    };
+    const state = { ...preset.state };
+    if (Array.isArray(preset.state.colors)) state.colors = [...preset.state.colors];
+    State.taskState[task.id] = state;
   }
   return State.taskState[task.id];
 }
@@ -208,8 +208,10 @@ function renderDeltaEResult(container, payload, state, meta) {
 }
 
 function refreshTaskResult() {
-  if (State.route.type !== "task" || State.route.id !== "delta-e") return;
-  const task = taskById("delta-e");
-  const state = State.taskState["delta-e"];
-  if (task && state) computeDeltaE(task, state);
+  if (State.route.type !== "task") return;
+  const task = taskById(State.route.id);
+  const state = task && State.taskState[task.id];
+  if (!task || !state) return;
+  if (task.id === "delta-e") computeDeltaE(task, state);
+  else if (typeof computeTask === "function") computeTask(task, state);
 }
