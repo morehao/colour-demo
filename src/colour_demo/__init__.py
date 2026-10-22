@@ -6,7 +6,15 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+
 __version__ = "0.1.0"
+
+# matplotlib 的配置目录必须是可写路径（本机 ~/.matplotlib 不可写）。
+# 放在包导入时统一设置：色度图、画册、能力目录都会间接导入 matplotlib，
+# 各自 setdefault 容易漏。
+os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "colour-demo-mpl"))
 
 # 方案 7.2：版本断言，0.4.7 与 develop 分支 API 有差异，必须锁死
 SUPPORTED_COLOUR_VERSION = "0.4.7"

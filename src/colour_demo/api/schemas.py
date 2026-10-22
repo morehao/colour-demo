@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
@@ -189,3 +189,15 @@ class OpticsRequest(_Base):
 
 class PlotRequest(_Base):
     plots: list[str] | None = Field(default=None, max_length=4)
+
+
+# --------------------------------------------------------------------------- #
+# M4（面板 26–28）
+# --------------------------------------------------------------------------- #
+class InvokeRequest(_Base):
+    """白名单调用：三种写法等价（`params` 显式、`args` 位置、`kwargs` 关键字）。"""
+
+    function: str = Field(min_length=1, max_length=96)
+    params: dict[str, Any] | None = None
+    args: list[Any] | None = Field(default=None, max_length=4)
+    kwargs: dict[str, Any] | None = None

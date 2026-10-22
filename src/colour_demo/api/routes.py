@@ -11,6 +11,7 @@ from ..config import MAX_COLOURS
 from ..core import (
     adapt,
     appearance,
+    catalog,
     chroma,
     chromaticity,
     convert,
@@ -22,6 +23,7 @@ from ..core import (
     geometry,
     gradient,
     interpolate,
+    invoke,
     lut,
     notation,
     optics,
@@ -47,6 +49,7 @@ from .schemas import (
     GeometryRequest,
     GradientRequest,
     InterpolateRequest,
+    InvokeRequest,
     LutRequest,
     NotationRequest,
     OpticsRequest,
@@ -121,6 +124,7 @@ def meta() -> dict:
             "correction": list(correction.METHODS),
             "interpolators": list(interpolate.INTERPOLATORS),
             "plots": list(gallery.PLOTS),
+            "invoke_whitelist": list(invoke.WHITELIST),
         },
         "counts": {
             "rgb_colourspaces": len(colour.RGB_COLOURSPACES),
@@ -159,6 +163,8 @@ def meta() -> dict:
             "POST /api/v1/geometry",
             "POST /api/v1/optics",
             "POST /api/v1/plot",
+            "GET /api/v1/catalog",
+            "POST /api/v1/catalog/invoke",
         ],
     }
 
@@ -400,3 +406,26 @@ def post_optics(payload: OpticsRequest) -> dict:
 @router.post("/plot")
 def post_plot(payload: PlotRequest) -> dict:
     return gallery.gallery_data(names=payload.plots)
+
+
+# --------------------------------------------------------------------------- #
+# M4：面板 26–28
+# --------------------------------------------------------------------------- #
+@router.get("/catalog")
+def get_catalog(
+    q: str | None = None,
+    status: str | None = None,
+    module: str | None = None,
+    limit: int = catalog.DEFAULT_LIMIT,
+    offset: int = 0,
+) -> dict:
+    """能力目录：1284 条子模块导出 × 归属状态（面板 / 数据集 / 内部），可按关键字与状态过滤。"""
+
+    return catalog.catalog_index(query=q, status=status, module=module, limit=limit, offset=offset)
+
+
+@router.post("/catalog/invoke")
+def post_catalog_invoke(payload: InvokeRequest) -> dict:
+    """白名单参数化调用（方案 11：不用 eval / 动态导入，白名单是静态表）。"""
+
+    return invoke.invoke(payload.model_dump(exclude_none=True))
