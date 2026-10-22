@@ -237,7 +237,15 @@ def new_axes(figsize=(4.0, 2.6), dpi: int = 110):
 # 面板装配
 # --------------------------------------------------------------------------- #
 def panel(pid: str, group: str, no: str, title: str, lead: str, blocks,
-          phase: str = "M1", apis=None, controls=None, footer: str = "") -> dict:
+          phase: str = "M1", apis=None, controls=None, footer: str = "",
+          title_plain: str = "", question: str = "", plain: str = "",
+          why: str = "", presets=None, verdict: str | None = None,
+          jargon=None) -> dict:
+    """装配一个面板。
+
+    前 6 个位置参数是专业视图（专家模式）；后面是新手工字段，缺省时构建期只警告，
+    `--strict` 时失败。新手视图只读这些字段，不复制事实文本。
+    """
     return {
         "id": pid,
         "group": group,
@@ -249,4 +257,12 @@ def panel(pid: str, group: str, no: str, title: str, lead: str, blocks,
         "controls": controls or [],
         "blocks": blocks,
         "footer": footer,
+        # 新手层（可选，构建期 lint）
+        "title_plain": title_plain,
+        "question": question,
+        "plain": plain,
+        "why": why,
+        "presets": presets or [],
+        "verdict": verdict,
+        "jargon": jargon or [],
     }
