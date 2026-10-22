@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <title>colour-demo Web 演示的分层架构：浏览器单页应用经 FastAPI 调用封装了 colour-science 0.4.7 的无状态服务层</title>
+  <desc>这张图展示 colour-demo 的运行时结构：最上方是浏览器里的单页应用，负责面板切换、输入控件与结果渲染；中间是单进程的 FastAPI 应用，内含 /api/v1 路由、pydantic 参数校验与错误映射、静态资源挂载；再往下是无状态服务层，每个面板对应一个纯函数模块，全部色彩计算委托给锁定版本 colour-science 0.4.7，图表由 matplotlib 的 Agg 后端渲染；底部是进程内 LRU 缓存与能力目录注册表。左侧的 pytest 回归门禁通过同一套服务层做黄金值校验，保证版本升级时数值不漂移。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+    </marker>
+  </defs>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f8fafc;
+      --fg: #172033;
+      --muted: #5b6475;
+      --line: #64748b;
+      --neutral: #e2e8f0;
+      --input: #bfdbfe;
+      --process: #c7d2fe;
+      --storage: #99f6e4;
+      --external: #fde68a;
+      --risk: #fecaca;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --fg: #e5e7eb;
+        --muted: #a3adbd;
+        --line: #94a3b8;
+        --neutral: #334155;
+        --input: #1d4ed8;
+        --process: #4338ca;
+        --storage: #0f766e;
+        --external: #92400e;
+        --risk: #991b1b;
+      }
+    }
+    svg { background: var(--bg); }
+    .title { font-size: 20px; font-weight: 650; fill: var(--fg); }
+    .label { font-size: 14px; font-weight: 600; fill: var(--fg); }
+    .small { font-size: 12px; fill: var(--muted); }
+    .node { stroke: var(--line); stroke-width: 1; }
+    .neutral { fill: var(--neutral); }
+    .input { fill: var(--input); }
+    .process { fill: var(--process); }
+    .storage { fill: var(--storage); }
+    .external { fill: var(--external); }
+    .edge { stroke: var(--line); stroke-width: 1.5; fill: none; }
+    .edge-arrow { marker-end: url(#arrow); }
+    .edge-dash { stroke-dasharray: 5 4; }
+    .zone { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 6 5; opacity: 0.8; }
+    .zone-label { font-size: 12px; font-weight: 600; fill: var(--muted); letter-spacing: .04em; }
+  </style>
+
+  <rect x="0" y="0" width="1180" height="720" fill="var(--bg)" />
+
+  <text class="title" x="40" y="46">colour-demo：浏览器 → FastAPI → 服务层 → colour-science 0.4.7</text>
+  <text class="small" x="40" y="70">单进程、无数据库；所有色彩计算由一个锁版本的 Python 库承担，服务层只做参数归一化与结果整形。</text>
+
+  <!-- 连线先画 -->
+  <!-- 浏览器 ↔ FastAPI -->
+  <path class="edge edge-arrow" d="M 590 178 L 590 216" />
+  <text class="small" x="600" y="202">HTTPS · JSON</text>
+
+  <!-- FastAPI → 服务层 -->
+  <path class="edge edge-arrow" d="M 590 344 L 590 386" />
+  <text class="small" x="600" y="370">服务调用</text>
+
+  <!-- 服务层 → colour -->
+  <path class="edge edge-arrow" d="M 320 560 L 250 606" />
+  <text class="small" x="150" y="596">全部计算委托</text>
+
+  <!-- 服务层 → matplotlib -->
+  <path class="edge edge-arrow" d="M 545 560 L 470 606" />
+  <text class="small" x="430" y="596">图表渲染</text>
+
+  <!-- 服务层 ↔ 缓存 -->
+  <path class="edge edge-arrow edge-dash" d="M 760 560 L 760 606" />
+  <path class="edge edge-dash edge-arrow" d="M 800 606 L 800 560" />
+  <text class="small" x="612" y="598">键 = 参数 + 版本</text>
+
+  <!-- 目录 → colour -->
+  <path class="edge edge-arrow edge-dash" d="M 940 560 L 990 606" />
+  <text class="small" x="880" y="596">pkgutil 扫描</text>
+
+  <!-- 返回响应 -->
+  <path class="edge edge-arrow" d="M 852 262 C 930 262, 940 150, 726 150" />
+  <text class="small" x="900" y="205">JSON / SVG</text>
+
+  <!-- 回归门禁 → 服务层 -->
+  <path class="edge edge-arrow edge-dash" d="M 230 186 C 230 300, 300 330, 340 384" />
+  <text class="small" x="112" y="290">同一套服务层</text>
+  <text class="small" x="112" y="306">做黄金值校验</text>
+
+  <!-- 浏览器 -->
+  <rect class="node input" x="430" y="106" width="320" height="72" rx="10" />
+  <text class="label" x="454" y="134">浏览器 · 单页应用</text>
+  <text class="small" x="454" y="156">hash 路由 · 面板注册表 · URL 携带参数</text>
+
+  <!-- FastAPI -->
+  <rect class="node process" x="350" y="216" width="502" height="128" rx="10" />
+  <text class="label" x="366" y="242">FastAPI + uvicorn（单进程）</text>
+  <rect class="node neutral" x="366" y="258" width="150" height="66" rx="7" />
+  <text class="small" x="378" y="282" style="fill: var(--fg); font-weight: 600;">/api/v1 路由</text>
+  <text class="small" x="378" y="302">8 个端点 · OpenAPI</text>
+  <rect class="node neutral" x="526" y="258" width="150" height="66" rx="7" />
+  <text class="small" x="538" y="282" style="fill: var(--fg); font-weight: 600;">pydantic 校验</text>
+  <text class="small" x="538" y="302">数量/范围/格式 → 422</text>
+  <rect class="node neutral" x="686" y="258" width="150" height="66" rx="7" />
+  <text class="small" x="698" y="282" style="fill: var(--fg); font-weight: 600;">静态资源</text>
+  <text class="small" x="698" y="302">单页 HTML · JS · CSS</text>
+
+  <!-- 服务层 -->
+  <rect class="zone" x="140" y="386" width="900" height="174" rx="12" />
+  <text class="zone-label" x="158" y="410">服务层：无状态纯函数，一个面板一个模块</text>
+  <rect class="node process" x="170" y="424" width="240" height="54" rx="8" />
+  <text class="small" x="186" y="447" style="fill: var(--fg); font-weight: 600;">convert · 颜色转换</text>
+  <text class="small" x="186" y="466">14 个坐标系 + 派生指标</text>
+  <rect class="node process" x="470" y="424" width="240" height="54" rx="8" />
+  <text class="small" x="486" y="447" style="fill: var(--fg); font-weight: 600;">difference · ΔE</text>
+  <text class="small" x="486" y="466">矩阵、最近/最远色对</text>
+  <rect class="node process" x="770" y="424" width="240" height="54" rx="8" />
+  <text class="small" x="786" y="447" style="fill: var(--fg); font-weight: 600;">plotting · 色度图</text>
+  <text class="small" x="786" y="466">色域叠加、样本点、SVG</text>
+  <rect class="node process" x="170" y="492" width="240" height="54" rx="8" />
+  <text class="small" x="186" y="515" style="fill: var(--fg); font-weight: 600;">gradient · 插值</text>
+  <text class="small" x="186" y="534">4 个空间的步长均匀度</text>
+  <rect class="node process" x="470" y="492" width="240" height="54" rx="8" />
+  <text class="small" x="486" y="515" style="fill: var(--fg); font-weight: 600;">cvd · 色觉模拟</text>
+  <text class="small" x="486" y="534">Machado 2009 · 三类型</text>
+  <rect class="node process" x="770" y="492" width="240" height="54" rx="8" />
+  <text class="small" x="786" y="515" style="fill: var(--fg); font-weight: 600;">catalog · 能力目录</text>
+  <text class="small" x="786" y="534">子模块清单 + 白名单调用</text>
+
+  <!-- 底部依赖与存储 -->
+  <rect class="node external" x="120" y="606" width="250" height="76" rx="10" />
+  <text class="label" x="138" y="634">colour-science 0.4.7</text>
+  <text class="small" x="138" y="654">锁版本 · 稳定 tag v0.4.7</text>
+  <text class="small" x="138" y="670">25 个子模块 / 321 个可调用</text>
+
+  <rect class="node external" x="390" y="606" width="190" height="76" rx="10" />
+  <text class="label" x="408" y="634">matplotlib Agg</text>
+  <text class="small" x="408" y="654">无交互后端</text>
+  <text class="small" x="408" y="670">全局锁串行</text>
+
+  <rect class="node storage" x="600" y="606" width="200" height="76" rx="10" />
+  <text class="label" x="618" y="634">LRU 缓存</text>
+  <text class="small" x="618" y="654">进程内 · 容量上限</text>
+  <text class="small" x="618" y="670">图表 77–92 ms → 命中 &lt;1 ms</text>
+
+  <rect class="node storage" x="820" y="606" width="250" height="76" rx="10" />
+  <text class="label" x="838" y="634">能力目录注册表</text>
+  <text class="small" x="838" y="654">函数 → 参数 schema 白名单</text>
+  <text class="small" x="838" y="670">构建时生成，随版本刷新</text>
+
+  <!-- 回归门禁 -->
+  <rect class="node neutral" x="100" y="106" width="260" height="80" rx="10" />
+  <text class="label" x="118" y="132">pytest 回归门禁（CI）</text>
+  <text class="small" x="118" y="152">黄金值 · Sharma ΔE 数据集</text>
+  <text class="small" x="118" y="170">往返误差 · 接口快照</text>
+</svg>
