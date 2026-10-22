@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 全覆盖，21 个端点 + 58 个测试全绿）**
+**状态：M4 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–28 全覆盖，30 个端点 + 75 个测试全绿）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -68,7 +68,7 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 .venv/bin/python -m pytest
 ```
 
-已实现 **21 个端点**，覆盖面板 00–18（面板 19–25 的服务端是 M3）：
+已实现 **30 个端点**，覆盖面板 00–28（全部 29 页）：
 
 | 端点 | 说明 | 面板 |
 | --- | --- | --- |
@@ -93,6 +93,16 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 | `POST /api/v1/phenomena-vision` | H-K 效应（VCC/VAC）+ Barten 1999 CSF | 16 |
 | `POST /api/v1/corresponding` | Breneman 8 组实验 × 5 个模型的 u′v′ 偏差 | 17 |
 | `POST /api/v1/cvd` | Machado 2009 三类锥体 × 连续严重度 + 可区分性指标 | 18 |
+| `POST /api/v1/recovery` | 5 种光谱重建（Smits/Mallett/Jakob/Meng/Otsu）+ 反射率回算 ΔE | 19 |
+| `POST /api/v1/correction` | 24 色卡校正（Cheung 2004 / Finlayson 2015 / Vandermonde）前后 ΔE | 20 |
+| `POST /api/v1/notation` | Munsell ⇄ xyY、CSS 关键字、HEX、7 种 Munsell 明度算法 | 21 |
+| `POST /api/v1/interpolate` | 4 种插值器重建光谱 + 残差 + 3D LUT 两种表插值 | 22 |
+| `POST /api/v1/geometry` | MacAdam 椭圆拟合（采样点 → 二次曲线 → 标准形）+ 图元 + 线段求交 | 23 |
+| `POST /api/v1/optics` | 薄膜干涉 TMM、瑞利散射、Michaelis–Menten 动力学 | 24 |
+| `POST /api/v1/plot` | 服务端 matplotlib 出图（PNG base64，固定画幅/dpi） | 25 |
+| `GET /api/v1/catalog` | 能力目录：1284 条子模块导出 × 归属（面板 826 / 数据集 238 / 内部 220），可过滤分页 | 26 |
+| `POST /api/v1/catalog/invoke` | 白名单参数化调用（11 个纯函数，静态白名单，无 eval） | 27 |
+| `GET /openapi.json` | FastAPI 自动生成的 API 控制台（面板 28） | 28 |
 
 错误一律 `{"detail": {"type": ..., "message": ...}}`（方案 6.3）：坏色值指出「第几个」、
 超上限给「最多 12 个」、未知方法列出可选枚举、请求体超 32 KB 直接 413、500 只返回 `trace_id`。
@@ -117,10 +127,10 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 | 能力 | 说明 |
 | --- | --- |
 | 自动探测 | 首次加载打 `GET /api/v1/health`；在线就把顶栏换成「API 在线 · colour 0.4.7」，离线退回静态快照并保留全部内容 |
-| 已接适配器的面板 | 01 转换、02 色度学、05 ΔE、06 渐变、08 传递函数、09 色度图、10 色域体、11 色温、12 质量、13 LUT、14 色适应、15 外观、16 感知、17 对应色、18 CVD |
+| 已接适配器的面板 | 除 00 概览外全部 27 个：01 转换、02 色度学、05 ΔE、06 渐变、08 传递函数、09 色度图、10 色域体、11 色温、12 质量、13 LUT、14 色适应、15 外观、16 感知、17 对应色、18 CVD、19 光谱重建、20 校正、21 记号、22 插值、23 几何、24 光学、25 画册、26 能力目录、27 参数化调用、28 API 控制台 |
 | 交互 | 下拉/文本框真实可改；改完回车或点按钮重算；每次请求都能展开看**请求与响应 JSON**（面板 28 的轻量版） |
 | 快照共存 | 实时结果在上，构建时的静态快照折叠在下，断网也能讲完整个故事 |
-| 未接的面板 | 00 概览、03 观察者、04 光度、07 空间图鉴、19–28（含能力目录的搜索仍可用）保持静态 |
+| 未接的面板 | 只有 00 概览（无控件）；能力目录的搜索与状态过滤现在也走服务端分页 |
 
 联调时抓到过一个真 bug：默认空间表里的 `CAM16 UCS` 在换算图里的节点名是 `cam16ucs`，
 `colour.convert` 直接抛 `NodeNotFound: Target cam16 ucs is not in G`——已加别名映射与回归测试。
@@ -210,8 +220,10 @@ colour-demo/
 - [x] M1：FastAPI 骨架 + 面板 00–07 端点（9 个）+ 黄金值测试（28 项全绿）
 - [x] M2：色域/色温/质量/LUT/适应/外观/感知/对应色/CVD 端点（面板 09–18，11 个端点）
 - [x] M2 补齐：面板 08 传递函数与视频信号（`POST /api/v1/transfer`）
-- [x] 前端接 API：15 个面板的实时适配器 + 离线退回静态快照
-- [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
+- [x] 前端接 API：22 个面板的实时适配器 + 离线退回静态快照
+- [x] M3：面板 19–25 端点（光谱重建 / 校正 / 记号 / 插值 / 几何 / 光学 / 画册，7 个）
+- [x] M4：能力目录（1284 条 × 归属）、白名单参数化调用、OpenAPI 控制台
+- [ ] 部署与 CI（Dockerfile / GitHub Actions / 版本漂移门禁）
 
 ## 参考资料
 

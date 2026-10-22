@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
@@ -143,3 +143,61 @@ class CvdRequest(_Base):
     deficiency: str = Field(default="Deuteranomaly", max_length=32)
     severity: float = Field(default=1.0, ge=0, le=1)
     severities: list[float] | None = Field(default=None, max_length=5)
+
+
+# --------------------------------------------------------------------------- #
+# M3（面板 19–25）
+# --------------------------------------------------------------------------- #
+class RecoveryRequest(_Base):
+    colors: ColourList | None = None
+    methods: list[str] | None = Field(default=None, max_length=5)
+    step: float = Field(default=5.0)
+
+
+class CorrectionRequest(_Base):
+    methods: list[str] | None = Field(default=None, max_length=3)
+
+
+class NotationRequest(_Base):
+    munsell: str = Field(default="5R 5/12", max_length=32)
+    keyword: str = Field(default="tomato", max_length=32)
+    hex_color: str = Field(default="#3B82F6", max_length=32, alias="hex", serialization_alias="hex")
+    value_y: float = Field(default=5.0, ge=0, le=100)
+
+
+class InterpolateRequest(_Base):
+    illuminant: str = Field(default="FL11", max_length=32)
+    coarse_step: float = Field(default=20.0, gt=0, le=100)
+    target_step: float = Field(default=5.0, gt=0, le=20)
+    start: float = Field(default=400.0, ge=360, le=830)
+    end: float = Field(default=700.0, ge=360, le=830)
+    interpolators: list[str] | None = Field(default=None, max_length=4)
+
+
+class GeometryRequest(_Base):
+    ellipse_index: int = Field(default=10, ge=0, le=24)
+    include_all: bool = True
+
+
+class OpticsRequest(_Base):
+    thicknesses: list[float] | None = Field(default=None, max_length=4)
+    start: float = Field(default=400.0, ge=360, le=830)
+    end: float = Field(default=700.0, ge=360, le=830)
+    step: float = Field(default=5.0, gt=0, le=20)
+    substrate_points: int = Field(default=40, ge=8, le=120)
+
+
+class PlotRequest(_Base):
+    plots: list[str] | None = Field(default=None, max_length=4)
+
+
+# --------------------------------------------------------------------------- #
+# M4（面板 26–28）
+# --------------------------------------------------------------------------- #
+class InvokeRequest(_Base):
+    """白名单调用：三种写法等价（`params` 显式、`args` 位置、`kwargs` 关键字）。"""
+
+    function: str = Field(min_length=1, max_length=96)
+    params: dict[str, Any] | None = None
+    args: list[Any] | None = Field(default=None, max_length=4)
+    kwargs: dict[str, Any] | None = None

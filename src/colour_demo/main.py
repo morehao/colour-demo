@@ -41,6 +41,15 @@ _FIELD_LABELS = {
     "gains": "通道增益",
     "surround": "环绕条件",
     "L_A": "适应亮度",
+    "illuminant": "光源",
+    "interpolators": "插值器",
+    "thicknesses": "膜厚",
+    "plots": "图",
+    "munsell": "Munsell 记号",
+    "keyword": "CSS 关键字",
+    "hex_color": "HEX",
+    "value_y": "Y（0–100）",
+    "ellipse_index": "椭圆序号",
 }
 
 PROTOTYPE_DIR = Path(__file__).resolve().parents[2] / "docs" / "prototype"

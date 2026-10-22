@@ -141,6 +141,233 @@ def test_gradient_contract_and_step_limits():
     _assert_error(client.post("/api/v1/gradient", json={"from": "#000000", "to": "#FFFFFF", "steps": 500}), 422, "value_error")
 
 
+# --------------------------------------------------------------------------- #
+# M3（面板 19–25）：7 个新端点
+# --------------------------------------------------------------------------- #
+def test_recovery_contract():
+    body = client.post("/api/v1/recovery", json={"colors": ["#3B82F6"]}).json()
+    rows = {row["method"]: row for row in body["rows"]}
+    assert set(rows) == {"Smits 1999", "Mallett 2019", "Jakob 2019", "Meng 2015"}
+    # XYZ 派重建必须几乎精确回到原色
+    assert rows["Jakob 2019"]["delta_e"] < 0.05
+    assert rows["Meng 2015"]["delta_e"] < 0.05
+    # Smits 用平滑基函数，蓝端残差约 1 个 ΔE——这是方法局限，不是实现误差
+    assert 0.5 < rows["Smits 1999"]["delta_e"] < 3.0
+    assert len(body["curves"]) == 4
+
+
+def test_recovery_rejects_bad_step_and_method():
+    _assert_error(client.post("/api/v1/recovery", json={"step": 3}), 422, "value_error")
+    _assert_error(client.post("/api/v1/recovery", json={"methods": ["Nope"]}), 422, "value_error")
+
+
+def test_correction_contract():
+    body = client.post("/api/v1/correction", json={}).json()
+    stages = {stage["stage"]: stage for stage in body["stages"]}
+    before = body["stages"][0]
+    assert before["mean_delta_e"] > 10  # A 光源下拍摄，偏色明显
+    # 三种方法都必须把平均 ΔE 压下来
+    for stage in body["stages"][1:]:
+        assert stage["mean_delta_e"] < before["mean_delta_e"]
+        assert len(stage["swatches"]) == 12
+    assert body["best"]["mean_delta_e"] < 3
+    assert len(body["matrices"]) == 3
+    assert len(stages) == 4
+
+
+def test_notation_contract():
+    body = client.post("/api/v1/notation", json={"hex": "#3B82F6"}).json()
+    assert body["munsell"]["roundtrip_matches"] is True
+    assert body["munsell"]["back"].startswith("5")
+    assert body["keyword"]["hex"] == "#FF6347"  # tomato
+    assert body["hex"]["canonical"] == "#3B82F6"
+    assert len(body["value_methods"]) == 7
+    assert body["counts"]["css_basic"] == 16
+    assert len(body["css_basic"]) == 16
+
+
+def test_notation_rejects_bad_inputs():
+    _assert_error(client.post("/api/v1/notation", json={"keyword": "not-a-css-colour"}), 422, "value_error")
+    _assert_error(client.post("/api/v1/notation", json={"value_y": 200}), 422, "value_error")
+
+
+def test_interpolate_contract():
+    body = client.post("/api/v1/interpolate", json={}).json()
+    rows = {row["interpolator"]: row for row in body["rows"]}
+    assert set(rows) == {"Linear", "Sprague", "PCHIP", "Cubic Spline"}
+    # 20 nm 采样漏掉汞灯尖线 → 各方法误差都在同一量级，但过冲不同
+    assert rows["Sprague"]["max_abs_error"] > 5
+    assert rows["Sprague"]["negative_points"] > 0  # Sprague 会过冲到负功率
+    assert rows["Linear"]["negative_points"] == 0
+    # 非线性合成表上两种 LUT 插值必须有差异（恒等表上必然为 0）
+    assert body["lut"]["max_gap_codes"] > 0.5
+    assert len(body["curves"]["residuals"]) == 4
+
+
+def test_interpolate_rejects_bad_steps():
+    _assert_error(client.post("/api/v1/interpolate", json={"coarse_step": 5, "target_step": 5}), 422, "value_error")
+    _assert_error(client.post("/api/v1/interpolate", json={"interpolators": ["Nope"]}), 422, "value_error")
+
+
+def test_geometry_contract():
+    body = client.post("/api/v1/geometry", json={}).json()
+    compare = {row["parameter"]: row for row in body["compare"]}
+    assert compare["中心 x₀"]["fitted"] == pytest.approx(compare["中心 x₀"]["original"], abs=1e-6)
+    # 长短半轴互换、θ 差约 90°（标准形约定），这是拟合正确而非误差
+    # 原始数据只给到 4 位有效数字（a=2.1×10⁻³），拟合值精度更高，所以按绝对误差比
+    assert compare["半轴 1"]["fitted"] == pytest.approx(compare["半轴 1"]["original"], abs=1e-5)
+    assert 85 < abs(compare["旋转角 θ°"]["fitted"] - compare["旋转角 θ°"]["original"]) < 95
+    assert all(abs(float(row["residual"])) < 1e-6 for row in body["residuals"])
+    assert body["segments"][0]["point"] == pytest.approx([0.5, 0.5])
+    assert body["segments"][1]["parallel"] is True
+    assert len(body["ellipses"]) == 25
+
+
+def test_geometry_rejects_bad_index():
+    _assert_error(client.post("/api/v1/geometry", json={"ellipse_index": 99}), 422, "value_error")
+
+
+def test_optics_contract():
+    body = client.post("/api/v1/optics", json={}).json()
+    # 无损介质：R + T ≈ 1，是传输矩阵实现的健全性检查
+    for row in body["film"]["rows"]:
+        assert row["rt_sum_mean"] == pytest.approx(1.0, abs=1e-3)
+    # 瑞利散射：实测比纯 1/λ⁴ 高几个百分点
+    for row in body["rayleigh"]["rows"]:
+        assert 0 < row["deviation_pct"] < 10
+    # Abebe 2017 的 b_m<1 把速率整体抬高
+    for row in body["kinetics"]["rows"]:
+        assert row["abebe"] > row["michaelis"]
+
+
+def test_plot_contract():
+    body = client.post("/api/v1/plot", json={"plots": ["visible-spectrum"]}).json()
+    assert len(body["plots"]) == 1
+    plot = body["plots"][0]
+    assert plot["media_type"] == "image/png"
+    assert len(plot["png_base64"]) > 1000  # 真的编码出位图了
+    assert body["counts"]["plot_functions"] > 50
+    assert body["groups"]
+
+    _assert_error(client.post("/api/v1/plot", json={"plots": ["nope"]}), 422, "value_error")
+    _assert_error(client.post("/api/v1/plot", json={"plots": ["visible-spectrum"] * 5}), 422, "value_error")
+
+
+def test_cvd_grey_is_invariant():
+    """方向性判断：CVD 矩阵保持消色差轴，灰色模拟后仍是灰色。
+
+    `eotf_sRGB`（码值→线性）与 `eotf_inverse_sRGB`（线性→码值）写反不会报错，
+    但会多做一次编码、把灰色压暗——这条测试就是钉住方向的。
+    """
+
+    body = client.post("/api/v1/cvd", json={"colors": ["#808080"], "severity": 1.0}).json()
+    assert body["rows"][0]["simulated_hex"] == "#808080"
+
+
+# --------------------------------------------------------------------------- #
+# M4（面板 26–28）：能力目录 / 参数化调用 / OpenAPI
+# --------------------------------------------------------------------------- #
+def test_catalog_contract():
+    body = client.get("/api/v1/catalog", params={"limit": 5}).json()
+    # 口径与方案一致：25 个子模块 / 1284 条导出 / 439 个顶层名称
+    assert body["total"] == 1284
+    assert body["top_level"]["names"] == 439
+    assert len(body["modules"]) == 25
+    assert body["coverage"] == 100.0
+    counts = body["counts"]
+    assert counts["面板"] + counts["数据集"] + counts["内部"] == body["total"]
+    assert counts == {"面板": 826, "数据集": 238, "内部": 220}
+    assert len(body["rows"]) == 5
+    assert all(row["target"] for row in body["rows"])  # 不允许未分类
+    assert len(body["whitelist"]) >= 10
+
+
+def test_catalog_filters_and_paging():
+    panels = client.get("/api/v1/catalog", params={"status": "面板", "limit": 3}).json()
+    assert panels["matched"] == 826
+    assert all(row["status"] == "面板" for row in panels["rows"])
+
+    search = client.get("/api/v1/catalog", params={"q": "delta_e", "limit": 50}).json()
+    assert search["matched"] > 0
+    assert all("delta_e" in row["name"].lower() for row in search["rows"])
+
+    paged = client.get("/api/v1/catalog", params={"limit": 5, "offset": 5}).json()
+    first = client.get("/api/v1/catalog", params={"limit": 5}).json()
+    assert paged["rows"] != first["rows"]
+
+    # 空字符串按“未过滤”处理（表单式请求会送 q=&status=）
+    empty = client.get("/api/v1/catalog", params={"q": "", "status": "", "limit": 5})
+    assert empty.status_code == 200 and empty.json()["matched"] == empty.json()["total"]
+
+    _assert_error(client.get("/api/v1/catalog", params={"status": "Nope"}), 422, "value_error")
+    _assert_error(client.get("/api/v1/catalog", params={"limit": 0}), 422, "value_error")
+
+
+def test_invoke_golden_and_parameter_styles():
+    # 三种写法等价：args 位置 + kwargs 关键字
+    body = client.post(
+        "/api/v1/catalog/invoke",
+        json={"function": "colour.temperature.CCT_to_xy", "args": [6500.0], "kwargs": {"method": "McCamy 1992"}},
+    ).json()
+    assert body["result"] == pytest.approx([0.3123, 0.3326], abs=1e-3)
+    assert body["panel"] == "11"
+
+    # params 显式写法；ΔE 黑/白应为 100 左右
+    delta = client.post(
+        "/api/v1/catalog/invoke",
+        json={
+            "function": "colour.delta_E",
+            "params": {"Lab_1": [0.0, 0.0, 0.0], "Lab_2": [100.0, 0.0, 0.0], "method": "CIE 2000"},
+        },
+    ).json()
+    assert delta["result"] == pytest.approx(100.0, abs=0.5)
+
+    # 布尔结果也要 JSON 安全
+    inside = client.post(
+        "/api/v1/catalog/invoke",
+        json={"function": "colour.volume.is_within_pointer_gamut", "params": {"XYZ": [0.2642, 0.2355, 0.9034]}},
+    ).json()
+    assert inside["result"] is False
+
+
+def test_invoke_rejects_non_whitelist_and_bad_params():
+    _assert_error(client.post("/api/v1/catalog/invoke", json={"function": "colour.os.system"}), 403, "forbidden")
+    _assert_error(client.post("/api/v1/catalog/invoke", json={"function": "colour.delta_E"}), 422, "value_error")
+    # 区间与枚举都要挡住
+    _assert_error(
+        client.post("/api/v1/catalog/invoke", json={"function": "colour.temperature.CCT_to_xy", "params": {"cct": 10}}),
+        422,
+        "value_error",
+    )
+    _assert_error(
+        client.post(
+            "/api/v1/catalog/invoke",
+            json={"function": "colour.XYZ_to_Lab", "params": {"XYZ": [0.1, 0.2]}},
+        ),
+        422,
+        "value_error",
+    )
+    _assert_error(
+        client.post(
+            "/api/v1/catalog/invoke",
+            json={"function": "colour.blindness.matrix_cvd_Machado2009", "params": {"deficiency": "Nope", "severity": 1}},
+        ),
+        422,
+        "value_error",
+    )
+
+
+def test_openapi_console_is_available():
+    """面板 28 就是 FastAPI 自动生成的 OpenAPI：路径数要对得上端点清单。"""
+
+    schema = client.get("/openapi.json").json()
+    meta = client.get("/api/v1/meta").json()
+    documented = {path for path in schema["paths"] if path.startswith("/api/v1")}
+    listed = {endpoint.split(" ")[1] for endpoint in meta["endpoints"]}
+    assert listed <= documented
+    assert len(documented) >= 30
+
+
 def test_demo_page_ships_live_layer():
     """原型页要带上「实时 API」层：健康探测 + 15 个面板适配器 + 离线退回静态快照。"""
 
@@ -165,7 +392,7 @@ GAMUTS = "sRGB,Display P3,ITU-R BT.2020"
 
 def test_meta_lists_m2_surface():
     body = client.get("/api/v1/meta").json()
-    assert len(body["endpoints"]) == 21
+    assert len(body["endpoints"]) == 30
     assert "POST /api/v1/cvd" in body["endpoints"]
     assert "GET /api/v1/chromaticity.svg" in body["endpoints"]
     assert body["counts"]["cat_matrices"] == 13
