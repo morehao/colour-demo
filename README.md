@@ -2,7 +2,7 @@
 
 > 基于 [colour-science/colour](https://github.com/colour-science/colour) 的色彩科学演示项目。
 
-**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 全覆盖，21 个端点 + 56 个测试全绿）**
+**状态：M2 完成（28 面板方案已定稿；原型 29 页全部出真实数据；服务端 `/api/v1` 可跑，面板 00–18 全覆盖，21 个端点 + 58 个测试全绿）**
 
 <p>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
@@ -102,6 +102,29 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 现取，逆函数按 `oetf_inverse_<后缀>` 约定配对；0.4.7 里 `oetf_SMPTE240M` 没有逆函数，
 响应会如实标成 `invertible: false` 而不是假装能往返。
 
+## 前端：静态快照 + 实时 API 两种模式
+
+`docs/prototype/index.html` 是单文件原型，默认展示**构建时**由 colour 算好的快照（离线可用）。
+本地起了服务端后，同一个页面会自动切换成**实时调用**：
+
+```bash
+.venv/bin/python -m uvicorn colour_demo.main:app --port 8000
+# 打开 http://127.0.0.1:8000/demo/ —— 控件可改，点「调用 API」或直接回车，数字由服务端现算
+# 也可以直接开文件（file:// 打开时会去 http://127.0.0.1:8000 找服务端）：
+#   docs/prototype/index.html?api=http://127.0.0.1:8000
+```
+
+| 能力 | 说明 |
+| --- | --- |
+| 自动探测 | 首次加载打 `GET /api/v1/health`；在线就把顶栏换成「API 在线 · colour 0.4.7」，离线退回静态快照并保留全部内容 |
+| 已接适配器的面板 | 01 转换、02 色度学、05 ΔE、06 渐变、08 传递函数、09 色度图、10 色域体、11 色温、12 质量、13 LUT、14 色适应、15 外观、16 感知、17 对应色、18 CVD |
+| 交互 | 下拉/文本框真实可改；改完回车或点按钮重算；每次请求都能展开看**请求与响应 JSON**（面板 28 的轻量版） |
+| 快照共存 | 实时结果在上，构建时的静态快照折叠在下，断网也能讲完整个故事 |
+| 未接的面板 | 00 概览、03 观察者、04 光度、07 空间图鉴、19–28（含能力目录的搜索仍可用）保持静态 |
+
+联调时抓到过一个真 bug：默认空间表里的 `CAM16 UCS` 在换算图里的节点名是 `cam16ucs`，
+`colour.convert` 直接抛 `NodeNotFound: Target cam16 ucs is not in G`——已加别名映射与回归测试。
+
 ## 示例：现在就能跑的 `colour` 代码
 
 以下片段只依赖 `colour-science`，不需要本仓库的代码，可直接对照理解后续 CLI 的输入输出。
@@ -187,7 +210,7 @@ colour-demo/
 - [x] M1：FastAPI 骨架 + 面板 00–07 端点（9 个）+ 黄金值测试（28 项全绿）
 - [x] M2：色域/色温/质量/LUT/适应/外观/感知/对应色/CVD 端点（面板 09–18，11 个端点）
 - [x] M2 补齐：面板 08 传递函数与视频信号（`POST /api/v1/transfer`）
-- [ ] 前端接 API：原型的静态控件改为调 `/api/v1`（当前仍是占位）
+- [x] 前端接 API：15 个面板的实时适配器 + 离线退回静态快照
 - [ ] M4：能力目录、参数化调用、OpenAPI、部署与 CI
 
 ## 参考资料

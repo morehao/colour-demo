@@ -34,6 +34,11 @@ CORE_SPACES = [
 
 DEFAULT_SOURCE = "sRGB"
 
+# 换算图的节点名是全小写内部名，和展示名不一致的在这里映射。
+# 不映射的话 `colour.convert` 会抛 `NodeNotFound: Target cam16 ucs is not in G`——
+# 面板默认空间表里就有 CAM16 UCS，所以这条不是可选项。
+GRAPH_ALIASES = {"CAM16 UCS": "CAM16UCS"}
+
 
 def _convert_safe(xyz, target: str):
     """把 XYZ（Domain1）转到目标空间；不支持的空间名映射成 422。"""
@@ -41,8 +46,9 @@ def _convert_safe(xyz, target: str):
     try:
         # to_reference_scale=True：让 Lab/Luv 这类空间输出 0–100 的人类可读刻度，
         # 否则 colour 会给 0–1（Lab/100），与 /delta-e 返回的 Lab 口径不一致。
+        node = GRAPH_ALIASES.get(target, target)
         return np.asarray(
-            colour.convert(np.asarray(xyz), "CIE XYZ", target, to_reference_scale=True), dtype=float
+            colour.convert(np.asarray(xyz), "CIE XYZ", node, to_reference_scale=True), dtype=float
         )
     except Exception as error:
         raise value_error(f"无法转换到空间 {target!r}：{error}") from error
@@ -88,7 +94,9 @@ def convert_colours(
         # CONVERSION_GRAPH 的节点名是小写内部名（cie xyz / cie lab / srgb），
         # 不能直接喂展示名，否则 networkx 报 NodeNotFound。
         try:
-            steps = conversion_path(source.strip().lower(), target.strip().lower())
+            source_node = GRAPH_ALIASES.get(source, source).strip().lower()
+            target_node = GRAPH_ALIASES.get(target, target).strip().lower()
+            steps = conversion_path(source_node, target_node)
         except Exception as error:
             raise value_error(f"没有 {source!r} → {target!r} 的换算链路：{error}") from error
         payload["conversion_path"] = [getattr(step, "__name__", str(step)) for step in steps]

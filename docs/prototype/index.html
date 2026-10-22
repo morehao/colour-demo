@@ -77,6 +77,24 @@
   input[type=range]{width:100%;accent-color:var(--accent)}
   .ctrl-note{padding:8px 16px;border-bottom:1px solid var(--line);background:#FBFAF7;color:var(--ink-3);font-size:11.5px}
 
+  /* live API 层 */
+  .chip--ok{background:#E9F6F3;border:1px solid #C6E7E0;color:#1B6B5F}
+  .field--run{align-content:end}
+  .field--run button{height:31px;padding:0 14px;border:1px solid #1B1D21;border-radius:7px;background:#1B1D21;color:#fff;
+    font-size:12.5px;cursor:pointer}
+  .field--run button:hover{background:#33363C}
+  .range-row{display:flex;align-items:center;gap:9px}
+  .range-row output{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:34px;text-align:right}
+  .live-out{display:grid;gap:0;margin:14px 0 0}
+  .live-out:empty{display:none}
+  .snapshot{margin-top:14px;border-top:1px solid var(--line);padding-top:6px}
+  .snapshot>summary,.trace>summary{cursor:pointer;font-size:11.5px;color:var(--ink-3);padding:5px 0;list-style:none}
+  .snapshot>summary::-webkit-details-marker,.trace>summary::-webkit-details-marker{display:none}
+  .snapshot>summary:before,.trace>summary:before{content:"▸ ";color:var(--ink-3)}
+  .snapshot[open]>summary:before,.trace[open]>summary:before{content:"▾ "}
+  .trace{margin-top:10px}
+  .trace .code{margin-top:6px}
+
   /* generic */
   .kv{width:100%;border-collapse:collapse}
   .kv td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top}
@@ -190,7 +208,7 @@
   <span class="chip chip--accent"><span class="dot"></span>colour-science <b id="lib-version">0.4.7</b></span>
   <span class="chip" id="chip-coverage">—</span>
   <span class="chip" id="chip-progress">—</span>
-  <span class="chip chip--warm">原型快照 · 静态页</span>
+  <span class="chip chip--warm" id="chip-api">静态快照 · 未连 API</span>
 </header>
 <div class="app">
   <aside class="side" id="side"></aside>
@@ -250,6 +268,405 @@ function highlight(text) {
     });
 }
 const PHASE_CLASS = { M1: "tag--m1", M2: "tag--m2", M3: "tag--m3", M4: "tag--m4", M0: "tag--m1" };
+
+/* ---------------- live API 层 ----------------
+   原型默认是构建时的静态快照（离线可用）；检测到本地服务端时，
+   同一页切换成「实时调用」：控件真实可改，结果由 /api/v1 现算。 */
+const API_BASE = (() => {
+  const override = new URLSearchParams(location.search).get("api");
+  if (override) return override.replace(/\/+$/, "");
+  if (location.protocol === "file:") return "http://127.0.0.1:8000";
+  // 由服务端托管（/demo/）时就是同源，省掉跨域
+  return location.origin.startsWith("http") ? "" : "http://127.0.0.1:8000";
+})();
+
+const api = { checked: false, ok: false, version: null };
+
+async function apiProbe() {
+  if (api.checked) return api;
+  api.checked = true;
+  try {
+    const response = await fetch(`${API_BASE}/api/v1/health`, { cache: "no-store" });
+    const body = await response.json();
+    api.ok = response.ok && body.status === "ok";
+    api.version = body.colour_version;
+  } catch (error) {
+    api.ok = false;
+  }
+  const chip = $("#chip-api");
+  if (chip) {
+    chip.textContent = api.ok ? `API 在线 · colour ${api.version}` : "静态快照 · 未连 API";
+    chip.classList.toggle("chip--ok", api.ok);
+  }
+  return api;
+}
+
+async function apiCall(spec, state) {
+  const [method, path] = spec.endpoint.split(" ");
+  let url = `${API_BASE}${path}`;
+  if (spec.query) url += "?" + new URLSearchParams(spec.query(state)).toString();
+  const init = { method, headers: {}, cache: "no-store" };
+  if (method !== "GET") {
+    init.headers["content-type"] = "application/json";
+    init.body = JSON.stringify(spec.body(state));
+  }
+  const started = performance.now();
+  const response = await fetch(url, init);
+  const elapsed = Math.round(performance.now() - started);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = payload.detail || {};
+    const parts = [response.status, detail.type, detail.message].filter(Boolean);
+    throw new Error(parts.join(" · ") || `HTTP ${response.status}`);
+  }
+  return { payload, elapsed, request: init.body ? JSON.parse(init.body) : Object.fromEntries(new URLSearchParams(spec.query ? spec.query(state) : {})) };
+}
+
+/* 块构造器：与 renderBlock 的入参严格对齐，避免两端格式漂移 */
+const cell = (v) => (v === null || v === undefined || (typeof v === "number" && !isFinite(v)) ? "—" : String(v));
+const num = (v, digits = 4) => (v === null || v === undefined || !isFinite(Number(v)) ? "—" : Number(v).toFixed(digits));
+const fixed = (v, digits = 4) => (Array.isArray(v) ? v.map((x) => num(x, digits)).join(", ") : num(v, digits));
+const B = {
+  table: (title, head, rows, opts = {}) => ({
+    type: "table", title, head, rows: rows.map((row) => row.map(cell)), mono: opts.mono, widths: opts.widths, note: opts.note,
+  }),
+  kv: (title, rows) => ({ type: "kv", title, rows }),
+  matrix: (title, colors, values, caption) => ({ type: "matrix", title, colors, values, caption }),
+  chart: (title, series, opts = {}) => ({
+    type: "chart", title, series, height: opts.height || 260, xlabel: opts.xlabel, ylabel: opts.ylabel, caption: opts.caption, zero: opts.zero,
+  }),
+  swatches: (title, items, cols) => ({ type: "swatches", title, items, cols: cols || Math.max(1, Math.min(8, items.length)) }),
+  image: (src, caption, maxw) => ({ type: "image", src, caption, alt: caption || "chart", maxw: maxw || "520px" }),
+  note: (text, tone) => ({ type: "note", text, tone: tone || "info", title: tone === "warn" ? "注意" : "说明" }),
+  json: (title, value) => ({ type: "json", title, code: JSON.stringify(value, null, 2) }),
+};
+
+const splitList = (text) => String(text || "").split(/[,，\s]+/).filter(Boolean).slice(0, 12);
+const series = (name, points, extra = {}) => ({ name, points, ...extra });
+
+/* 每个面板的实时适配器：fields 决定控件，body/query 决定请求，blocks 决定回显 */
+const LIVE = {};
+
+LIVE.convert = {
+  endpoint: "POST /api/v1/convert",
+  hint: "改颜色或目标空间 → 服务端重算 14 个核心空间，并给出换算链路。",
+  fields: [
+    { key: "colors", label: "颜色（逗号分隔，≤12）", kind: "text", value: "#3B82F6, #E9C46A" },
+    { key: "target", label: "换算链路目标", kind: "select", options: ["CIE Lab", "Oklab", "CAM16 UCS", "HCL", "Oklch"], value: "CIE Lab" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), target: s.target }),
+  blocks: (p) => [
+    B.table("实时结果：核心空间坐标", ["输入", ...p.spaces],
+      p.rows.map((row) => [row.hex, ...p.spaces.map((space) => fixed(row.values[space], 4))]),
+      { mono: [0], note: `XYZ 用 0–1 域，Lab/Luv 用 0–100 域（to_reference_scale=True）。` }),
+    B.kv("换算链路", [
+      ["路径", (p.conversion_path || []).join(" → ") || "—", `${p.conversion_hops || 0} 跳`],
+      ["起点", p.source, "source"],
+    ]),
+  ],
+};
+
+LIVE.chroma = {
+  endpoint: "POST /api/v1/chroma",
+  hint: "主波长/纯度依赖光源白点，换光源看看数字怎么变。",
+  fields: [
+    { key: "colors", label: "颜色（逗号分隔）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "illuminant", label: "光源", kind: "select", options: ["D65", "D50", "A", "C", "FL2"], value: "D65" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), illuminant: s.illuminant }),
+  blocks: (p) => [
+    B.table("实时结果：色度学属性", ["颜色", "xy", "uv(1960)", "u′v′(1976)", "主波长 nm", "激发纯度", "色度纯度"],
+      p.rows.map((row) => [row.hex, fixed(row.xy), fixed(row.uv), fixed(row.uv_prime), num(row.dominant_wavelength, 1), num(row.excitation_purity, 4), num(row.colorimetric_purity, 4)]),
+      { mono: [0, 1, 2, 3], note: `白点 xy = ${fixed(p.whitepoint_xy)}（${p.illuminant} / ${p.observer}）` }),
+  ],
+};
+
+LIVE["delta-e"] = {
+  endpoint: "POST /api/v1/delta-e",
+  hint: "换 ΔE 方法，同一组颜色的数值差可能很大——这就是「不可比」的来源。",
+  fields: [
+    { key: "colors", label: "颜色（逗号分隔，≥2）", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "method", label: "方法", kind: "select", options: ["CIE 2000", "CIE 1976", "CIE 1994", "CMC", "CAM02-UCS", "CAM16-UCS"], value: "CIE 2000" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), method: s.method }),
+  blocks: (p) => [
+    B.matrix(`ΔE 矩阵（${p.method}）`, p.colors, p.matrix, "对角线不参与比较；单元格越深差异越大。"),
+    B.kv("极值对", [
+      ["最接近", `${p.pairs.closest.a} ↔ ${p.pairs.closest.b}`, `ΔE ${num(p.pairs.closest.value, 2)}`],
+      ["最远", `${p.pairs.farthest.a} ↔ ${p.pairs.farthest.b}`, `ΔE ${num(p.pairs.farthest.value, 2)}`],
+    ]),
+  ],
+};
+
+LIVE.gradient = {
+  endpoint: "POST /api/v1/gradient",
+  hint: "在哪个空间插值，决定了步长是否均匀。",
+  fields: [
+    { key: "from", label: "起点", kind: "text", value: "#264653" },
+    { key: "to", label: "终点", kind: "text", value: "#E9C46A" },
+    { key: "space", label: "插值空间", kind: "select", options: ["CIE Lab", "Oklab", "CIE Luv", "sRGB", "CAM16 UCS"], value: "Oklab" },
+    { key: "steps", label: "步数", kind: "text", value: "11" },
+  ],
+  body: (s) => ({ from: s.from, to: s.to, space: s.space, steps: Math.max(2, Math.min(101, parseInt(s.steps, 10) || 11)) }),
+  blocks: (p) => [
+    { type: "strips", title: `实时渐变（${p.space}，${p.steps} 步）`, items: [{ label: `${p.space}`, note: p.method, colors: p.rows.map((row) => row.hex), stats: [["比值", num(p.uniformity.ratio, 3)], ["均值 ΔE", num(p.uniformity.mean, 3)]] }] },
+    B.chart("相邻步的 ΔE", [series("ΔE", p.deltas.map((value, index) => [index + 1, value]))], { xlabel: "步序", ylabel: "ΔE", zero: true }),
+  ],
+};
+
+LIVE.transfer = {
+  endpoint: "POST /api/v1/transfer",
+  hint: "编码曲线 + 往返误差 + YCbCr 码值。",
+  fields: [
+    { key: "colors", label: "颜色（YCbCr 取样）", kind: "text", value: "#3B82F6" },
+    { key: "samples", label: "曲线采样点", kind: "select", options: ["17", "33", "65"], value: "33" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), samples: parseInt(s.samples, 10) }),
+  blocks: (p) => [
+    B.chart("编码曲线（横轴线性光 0–1）",
+      p.curves.slice(0, 6).map((row) => series(row.name, row.linear
+        .map((x, i) => [x, row.encoded[i]])
+        .filter(([, y]) => typeof y === "number" && isFinite(y)))),
+      { xlabel: "线性光", ylabel: "编码值", height: 300 }),
+    B.table("往返误差（encode → decode）", ["编码", "分组", "最大误差", "可逆"],
+      p.curves.map((row) => [row.name, row.group, row.roundtrip_error === null ? "不可计算" : row.roundtrip_error.toExponential(1), row.invertible ? "是" : "否"]),
+      { mono: [2] }),
+    B.table("YCbCr 码值", ["颜色", "范围", "Y / Cb / Cr（浮点）", "码值", "往返误差"],
+      p.ycbcr.rows.flatMap((row) => ["limited", "full"].filter((k) => row[k]).map((k) => [row.hex, k, fixed(row[k].ycbcr, 4), row[k].codes.join(" / "), row[k].roundtrip_error.toExponential(1)])),
+      { mono: [0, 2, 3], note: `${p.ycbcr.luma} · ${p.ycbcr.bits} bit` }),
+  ],
+};
+
+LIVE.chromaticity = {
+  endpoint: "GET /api/v1/chromaticity.svg",
+  hint: "换色度图/色域/样本点：图由服务端 matplotlib 现画，下面的面积表来自 /chromaticity。",
+  fields: [
+    { key: "diagram", label: "色度图", kind: "select", options: ["CIE 1931", "CIE 1960 UCS", "CIE 1976 UCS"], value: "CIE 1931" },
+    { key: "gamuts", label: "叠加色域", kind: "select", options: ["sRGB,Display P3,ITU-R BT.2020", "sRGB", "sRGB,Display P3"], value: "sRGB,Display P3,ITU-R BT.2020" },
+    { key: "colors", label: "样本点", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+  ],
+  query: (s) => ({ diagram: s.diagram, gamuts: s.gamuts, colors: splitList(s.colors).join(",") }),
+  svgUrl: (s) => `${API_BASE}/api/v1/chromaticity.svg?` + new URLSearchParams(LIVE.chromaticity.query(s)).toString(),
+  dataEndpoint: "GET /api/v1/chromaticity",
+  blocks: (p, state) => [
+    B.image(LIVE.chromaticity.svgUrl(state), `${p.diagram} + ${p.gamuts.map((g) => g.name).join(" / ")} + ${p.samples.length} 个样本点`, "560px"),
+    B.table("色域三角形面积（xy 平面）", ["色域", "面积", "相对 sRGB"],
+      p.gamuts.map((g) => [g.name, num(g.area_xy, 5), num(g.relative_to_sRGB, 3) + "×"]), { mono: [1, 2] }),
+    B.table("样本点与色域归属", ["颜色", "xy", "u′v′", ...p.gamuts.map((g) => g.name)],
+      p.samples.map((row) => [row.hex, fixed(row.xy), fixed(row.uv_1976), ...p.gamuts.map((g) => (row.inside[g.name] ? "✔" : "✗"))]),
+      { mono: [0, 1, 2], note: "✔/✗ = 该空间编码值是否都落在 0–1（矩阵 + cctf 判定）" }),
+  ],
+};
+
+LIVE["gamut-volume"] = {
+  endpoint: "POST /api/v1/volume",
+  hint: "MonteCarlo 体积（固定种子，可复现）+ 三套边界判据。",
+  fields: [
+    { key: "samples", label: "采样数", kind: "select", options: ["5000", "20000", "50000"], value: "20000" },
+    { key: "colors", label: "边界判定的样本色", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+  ],
+  body: (s) => ({ spaces: ["sRGB", "Display P3", "ITU-R BT.2020", "ACES2065-1"], samples: parseInt(s.samples, 10), colors: splitList(s.colors) }),
+  blocks: (p) => [
+    B.table(`色域体积（${p.samples} 采样，seed=${p.seed}）`, ["色彩空间", "体积（Lab 单位）", "相对 sRGB", "Lab 范围"],
+      p.rows.map((row) => [row.space, num(row.volume, 1), num(row.relative_to_reference, 3) + "×", row.lab_limits ? row.lab_limits.map((pair) => `[${num(pair[0], 0)}, ${num(pair[1], 0)}]`).join(" ") : "—"]),
+      { mono: [1, 2] }),
+    p.boundaries.length ? B.table("边界判据", ["颜色", "MacAdam(D65)", "Pointer", "可见光谱"],
+      p.boundaries.map((row) => [row.hex, row.within_macadam_D65 ? "内" : "外", row.within_pointer ? "内" : "外", row.within_visible_spectrum ? "内" : "外"]), { mono: [0] }) : null,
+  ].filter(Boolean),
+};
+
+LIVE.temperature = {
+  endpoint: "POST /api/v1/temperature",
+  hint: "换色温：xy 派与 uv 派方法表互不通用，正反解分开看。",
+  fields: [
+    { key: "cct", label: "色温 K", kind: "select", options: ["2700", "4000", "5000", "6500", "9000"], value: "6500" },
+    { key: "colors", label: "待测颜色（可选）", kind: "text", value: "#FFFFFF" },
+  ],
+  body: (s) => ({ cct: parseInt(s.cct, 10), colors: splitList(s.colors) }),
+  blocks: (p) => [
+    B.table("xy → CCT（4 种反解）", ["样本", ...Object.keys(p.xy_to_cct[0].results)],
+      p.xy_to_cct.map((row) => [row.sample, ...Object.values(row.results).map((v) => (v === null ? "—" : num(v, 1) + " K"))]), { mono: [0] }),
+    B.table("uv → CCT（含 D_uv）", ["样本", ...Object.keys(p.uv_to_cct[0].results)],
+      p.uv_to_cct.map((row) => [row.sample, ...Object.values(row.results).map((v) => (v && v.cct !== null ? `${num(v.cct, 1)} K` : "—"))]), { mono: [0], note: "Ohno 2013 / Robertson 1968 返回 (CCT, D_uv) 二元组" }),
+    B.table(`CCT → xy / uv（${p.input.cct} K）`, ["方法", "xy", "uv"],
+      p.cct_to_xy.map((row, i) => [row.method, fixed(row.xy, 5), fixed((p.cct_to_uv[i] || {}).uv, 5)]), { mono: [0, 1, 2] }),
+    B.chart("普朗克轨迹（Planck 1900）", [series("黑体轨迹", p.planckian_locus.map((row) => [row.xy[0], row.xy[1]]), { mode: "scatter" })],
+      { xlabel: "x", ylabel: "y", height: 300 }),
+  ],
+};
+
+LIVE.quality = {
+  endpoint: "POST /api/v1/quality",
+  hint: "四套显色口径并列：Ra / Qa / Rf·Rg / SSI，结论会互相打架。",
+  fields: [
+    { key: "illuminants", label: "光源（逗号分隔）", kind: "text", value: "D65, FL2, A, FL11" },
+    { key: "reference", label: "SSI 参考", kind: "select", options: ["D65", "D50", "A"], value: "D65" },
+  ],
+  body: (s) => ({ illuminants: splitList(s.illuminants), reference: s.reference }),
+  blocks: (p) => [
+    B.table("显色指标", ["光源", "CRI Ra", "Ra(CIE 2024)", "CQS Qa", "TM-30 Rf", "TM-30 Rg", "SSI"],
+      p.rows.map((row) => [row.illuminant, num(row.Ra, 2), num(row.Ra_2024, 2), num(row.Qa, 2), num(row.Rf, 2), num(row.Rg, 2), num(row.ssi, 3)]), { mono: [0] }),
+    p.special_indices.length ? B.table(`CRI 特殊显色指数（${p.special_indices[0].illuminant}）`,
+      ["色样", ...Object.keys(p.special_indices[0]).filter((k) => k !== "illuminant")],
+      [["Ri", ...Object.entries(p.special_indices[0]).filter(([k]) => k !== "illuminant").map(([, v]) => num(v, 1))]], { mono: [0] }) : null,
+  ].filter(Boolean),
+};
+
+LIVE["image-lut"] = {
+  endpoint: "POST /api/v1/lut",
+  hint: "3D LUT 的两种插值方式在同一批颜色上的差异。",
+  fields: [
+    { key: "colors", label: "取样颜色", kind: "text", value: "#3B82F6, #808080, #E9C46A" },
+    { key: "size", label: "LUT 尺寸", kind: "select", options: ["9", "17", "33"], value: "17" },
+    { key: "gains", label: "通道增益 R,G,B", kind: "text", value: "1.2, 0.85, 1.05" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), size: parseInt(s.size, 10), gains: splitList(s.gains).map(Number) }),
+  blocks: (p) => [
+    B.table(`LUT ${p.size}³（${p.table_points} 格点）`, ["输入", "Trilinear", "Tetrahedral", "两法差"],
+      p.rows.map((row) => [row.input, row.outputs.Trilinear ? row.outputs.Trilinear.hex : "—", row.outputs.Tetrahedral ? row.outputs.Tetrahedral.hex : "—", num(row.interpolator_spread, 5)]),
+      { mono: [0, 1, 2], note: p.domain }),
+    { type: "swatches", title: "灰阶带（LUT 后）", cols: Math.min(9, p.ramp.length), items: p.ramp.map((row) => ({ hex: row.output, label: row.output, sub: row.input })) },
+  ],
+};
+
+LIVE.adaptation = {
+  endpoint: "POST /api/v1/adapt",
+  hint: "7 种色适应方法（含需要补观察条件的 4 个）+ vK20 不完全适应。",
+  fields: [
+    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "source", label: "源白点", kind: "select", options: ["A", "D50", "D65", "D93", "FL2"], value: "A" },
+    { key: "target", label: "目标白点", kind: "select", options: ["D65", "D50", "D93"], value: "D65" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), source: s.source, target: s.target }),
+  blocks: (p) => [
+    B.table(`适应后结果（${p.source.name} → ${p.target.name}）`, ["方法", "xy", "sRGB", "ΔE(原色)"],
+      Object.entries(p.rows[0].results).map(([method, value]) => [method, value ? fixed(value.xy) : "—", value ? value.hex : "—", value ? num(value.delta_e, 2) : "—"]),
+      { mono: [1, 2] }),
+    B.table("vK20（不完全适应）", ["颜色", "xy", "sRGB"],
+      Object.entries(p.vK20).map(([input, value]) => [input, value ? fixed(value.xy) : "—", value ? value.hex : "—"]), { mono: [1, 2] }),
+    B.table("CAT 矩阵", ["名称", "3×3 系数"], p.cat_matrices.map((row) => [row.name, row.matrix.map((r) => r.map((v) => num(v, 4)).join(", ")).join(" | ")]), { mono: [1] }),
+  ],
+};
+
+LIVE.appearance = {
+  endpoint: "POST /api/v1/appearance",
+  hint: "12 个外观模型对同一 XYZ 给出不同的 J/C/h；ZCAM 用 0–1 域，其余多数 0–100。",
+  fields: [
+    { key: "colors", label: "颜色", kind: "text", value: "#3B82F6" },
+    { key: "L_A", label: "L_A（cd·m⁻²）", kind: "select", options: ["4.07", "20", "100", "318.31"], value: "4.07" },
+    { key: "surround", label: "环绕", kind: "select", options: ["Average", "Dim", "Dark"], value: "Average" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), L_A: Number(s.L_A), surround: s.surround }),
+  blocks: (p) => [
+    B.table(`外观模型输出（L_A=${p.conditions.L_A.toFixed(2)}, Y_b=${p.conditions.Y_b}, ${p.conditions.surround}）`,
+      ["模型", "J", "C", "h", "M", "H", "往返误差", "域"],
+      Object.entries(p.rows[0].results).map(([model, value]) => [model, num(value.J, 2), num(value.C, 2), num(value.h, 1), num(value.M, 2), num(value.H, 1), value.roundtrip_error === null ? "无逆变换" : value.roundtrip_error.toExponential(1), p.models[model].scale === 1 ? "0–1" : "0–100"]),
+      { mono: [0, 1, 2, 3, 4, 5] }),
+  ],
+};
+
+LIVE["phenomena-vision"] = {
+  endpoint: "POST /api/v1/phenomena-vision",
+  hint: "H-K 效应 + Barten CSF（亮度经瞳孔换成视网膜照度再算）。",
+  fields: [
+    { key: "colors", label: "样本颜色", kind: "text", value: "#3B82F6" },
+    { key: "luminances", label: "亮度 cd·m⁻²（逗号分隔）", kind: "text", value: "10, 100, 1000" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), luminances: splitList(s.luminances).map(Number), points: 32 }),
+  blocks: (p) => [
+    B.chart("Helmholtz–Kohlrausch 效应", ["VCC", "VAC"].map((method) => series(method, p.hk.chromas.map((c, i) => [c, p.hk.curves[method][i]]))), { xlabel: "彩度 C", ylabel: "亮度增益因子", height: 280 }),
+    B.chart("Barten 1999 对比敏感度", Object.entries(p.csf.curves).map(([level, values]) => series(`Y₀=${level} cd·m⁻²`, p.csf.frequencies.map((f, i) => [f, values[i]]))), { xlabel: "空间频率 / cpd", ylabel: "S", height: 280 }),
+    B.table("派生量", ["亮度", "瞳孔直径 mm", "视网膜照度 Td", "CSF 峰值 cpd"],
+      p.csf.derived.map((row) => [num(row.luminance, 0), num(row.pupil_diameter_mm, 3), num(row.retinal_illuminance_td, 1), num(row.peak_frequency_cpd, 2)]), { mono: [0, 1, 2, 3] }),
+  ],
+};
+
+LIVE.corresponding = {
+  endpoint: "POST /api/v1/corresponding",
+  hint: "Breneman 实验 × 5 个模型：预测点离实测终点有多远。",
+  fields: [
+    { key: "experiment", label: "实验编号", kind: "select", options: ["1", "2", "3", "4", "6", "8", "11", "12"], value: "1" },
+  ],
+  body: (s) => ({ experiment: parseInt(s.experiment, 10) }),
+  blocks: (p) => [
+    B.table(`实验 ${p.experiment}：各模型预测偏差`, ["模型", "均值 u′v′ 距离", "最大", "样本数"],
+      p.rows.map((row) => [row.model, row.mean_uv_error === undefined ? "—" : num(row.mean_uv_error, 5), row.max_uv_error === undefined ? "—" : num(row.max_uv_error, 5), (row.samples || []).length]), { mono: [0, 1, 2] }),
+    B.table("8 组实验的横向对比", ["模型", "参与实验数", "平均偏差"], p.leaderboard.map((row) => [row.model, row.experiments, num(row.mean_uv_error, 5)]), { mono: [0, 2] }),
+    B.note(p.unavailable_experiments.map((item) => `实验 ${item.experiment} 不可用：${item.reason}`).join("；"), "warn"),
+  ],
+};
+
+LIVE.cvd = {
+  endpoint: "POST /api/v1/cvd",
+  hint: "Machado 2009：类型 + 严重度 → 模拟后的调色板与可区分性指标。",
+  fields: [
+    { key: "colors", label: "调色板", kind: "text", value: "#264653, #2A9D8F, #E9C46A, #F4A261, #E76F51" },
+    { key: "deficiency", label: "类型", kind: "select", options: ["Protanomaly", "Deuteranomaly", "Tritanomaly"], value: "Deuteranomaly" },
+    { key: "severity", label: "严重度（0–1）", kind: "range", min: 0, max: 1, step: 0.05, value: "1" },
+  ],
+  body: (s) => ({ colors: splitList(s.colors), deficiency: s.deficiency, severity: Number(s.severity) }),
+  blocks: (p) => [
+    { type: "swatches", title: `原始调色板`, cols: Math.min(8, p.rows.length), items: p.rows.map((row, i) => ({ hex: row.hex, label: `#${i + 1}`, sub: row.hex })) },
+    { type: "swatches", title: `${p.label}（severity=${p.severity.toFixed(2)}）`, cols: Math.min(8, p.rows.length), items: p.rows.map((row, i) => ({ hex: row.simulated_hex, label: `#${i + 1}`, sub: `ΔE ${num(row.delta_e, 1)}` })) },
+    B.kv("可区分性", [
+      ["原色 vs 模拟 ΔE（均值）", num(p.metrics.mean_delta_e, 2), "越大差异越大"],
+      ["模拟后相邻最小 ΔE", num(p.metrics.min_adjacent_delta_e, 2), `阈值 ${p.metrics.indistinguishable_threshold}`],
+      ["不可区分相邻对", String(p.metrics.collisions.length), "低于阈值的相邻对"],
+    ]),
+  ],
+};
+
+function renderField(field) {
+  const key = `data-live-key="${field.key}"`;
+  if (field.kind === "select") {
+    return `<div class="field"><span>${esc(field.label)}</span><select ${key}>${field.options.map((option) => `<option${option === field.value ? " selected" : ""}>${esc(option)}</option>`).join("")}</select></div>`;
+  }
+  if (field.kind === "range") {
+    return `<div class="field"><span>${esc(field.label)}</span><div class="range-row"><input type="range" ${key} min="${field.min}" max="${field.max}" step="${field.step}" value="${esc(field.value)}"><output data-live-out="${field.key}">${esc(field.value)}</output></div></div>`;
+  }
+  return `<div class="field"><span>${esc(field.label)}</span><input type="text" ${key} value="${esc(field.value)}"></div>`;
+}
+
+function collectState(spec) {
+  const state = {};
+  spec.fields.forEach((field) => {
+    const element = document.querySelector(`[data-live-key="${field.key}"]`);
+    if (element) state[field.key] = element.value;
+  });
+  return state;
+}
+
+function renderTrace(spec, state, payload, elapsed, request) {
+  const body = spec.query ? spec.query(state) : request;
+  return `<details class="trace"><summary>请求 / 响应 JSON（${elapsed} ms）</summary>
+    <div class="code"><pre>${highlight(JSON.stringify({ endpoint: spec.endpoint, body }, null, 2))}</pre></div>
+    <div class="code"><pre>${highlight(JSON.stringify(payload, null, 2))}</pre></div></details>`;
+}
+
+async function runLive(panel, spec) {
+  const out = $("#live-out");
+  const status = $("#live-status");
+  if (!out) return;
+  const state = collectState(spec);
+  status.textContent = `调用 ${spec.endpoint} …`;
+  try {
+    if (spec.query) {
+      // 图 + 数据分两个端点取：图是 SVG，数据是 JSON（面积/归属表）
+      const dataSpec = { endpoint: spec.dataEndpoint, query: spec.query };
+      const { payload, elapsed } = await apiCall(dataSpec, state);
+      out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, null);
+      status.textContent = `实时结果 · ${spec.endpoint} + ${spec.dataEndpoint} · colour ${api.version}`;
+    } else {
+      const { payload, elapsed, request } = await apiCall(spec, state);
+      out.innerHTML = spec.blocks(payload, state).map(renderBlock).join("") + renderTrace(spec, state, payload, elapsed, request);
+      status.textContent = `实时结果 · ${elapsed} ms · ${spec.endpoint} · colour ${api.version}`;
+    }
+  } catch (error) {
+    out.innerHTML = `<div class="note-box note-warn"><span class="b">调用失败</span><span>${esc(error.message)}</span></div>`;
+    status.textContent = "调用失败：先启动服务端 .venv/bin/python -m uvicorn colour_demo.main:app --port 8000";
+  }
+}
+
 
 /* ---------------- chart ---------------- */
 function renderChart(b) {
@@ -430,6 +847,13 @@ function renderBlock(b) {
 
 /* ---------------- panels ---------------- */
 function renderControls(panel) {
+  const spec = LIVE[panel.id];
+  if (spec && api.ok) {
+    return `<div class="controls">${spec.fields.map(renderField).join("")}
+      <div class="field field--run"><span>&nbsp;</span><button id="run-live" type="button">调用 API</button></div>
+    </div>
+    <div class="ctrl-note" id="live-status">${esc(spec.hint || "改完参数点「调用 API」，结果由服务端现算。")}</div>`;
+  }
   if (!panel.controls.length) return "";
   return `<div class="controls">${panel.controls
     .map((c) => {
@@ -445,27 +869,51 @@ function renderControls(panel) {
       return `<div class="field"><span>${esc(c.label)}</span><input type="text" value="${esc(c.value)}" disabled></div>`;
     })
     .join("")}</div>
-    <div class="ctrl-note">原型为静态快照：导航与能力目录搜索可用，其余控件为样式占位（正式版接 API 后启用）。</div>`;
+    <div class="ctrl-note">${spec ? "本页有实时适配器，但没连上本地服务端：启动 <code>uvicorn colour_demo.main:app --port 8000</code> 后刷新即可切换为实时调用。" : "原型为静态快照：导航与能力目录搜索可用，其余控件为样式占位（正式版接 API 后启用）。"}</div>`;
 }
 
 function renderPanel(panel) {
+  const spec = LIVE[panel.id];
+  const liveCapable = Boolean(spec) && api.ok;
+  const snapshot = panel.blocks.map(renderBlock).join("");
   $("#main").innerHTML = `
     <div class="panel-head">
       <div class="eyebrow">Panel ${panel.no} · ${esc(panel.group)}
         <span class="tag ${PHASE_CLASS[panel.phase] || ""}" style="margin-left:8px">${esc(panel.phase)}</span>
-        ${panel.pending ? '<span class="tag tag--pending" style="margin-left:6px">数据待补充</span>' : ""}</div>
+        ${panel.pending ? '<span class="tag tag--pending" style="margin-left:6px">数据待补充</span>' : ""}
+        ${liveCapable ? '<span class="tag tag--m2" style="margin-left:6px">实时 API</span>' : ""}</div>
       <h1>${esc(panel.title)}</h1>
       <p class="lead">${panel.lead.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")}</p>
     </div>
     <div class="card">${renderControls(panel)}</div>
-    ${panel.blocks.map(renderBlock).join("")}
+    ${liveCapable
+      ? `<div class="live-out" id="live-out"></div>
+         <details class="snapshot"><summary>静态快照 · 构建时由 colour ${esc(DATA.lib.version)} 计算（离线可用）</summary>${snapshot}</details>`
+      : snapshot}
     <footer class="page-foot">${panel.footer.replace(/`([^`]+)`/g, "<code>$1</code>")}<br>
-      本页数据由 <code>colour-science ${DATA.lib.version}</code> 于构建时计算；APIs：${panel.apis.map((a) => `<code>${esc(a)}</code>`).join(" · ")}</footer>`;
+      本页快照数据由 <code>colour-science ${DATA.lib.version}</code> 于构建时计算；APIs：${panel.apis.map((a) => `<code>${esc(a)}</code>`).join(" · ")}</footer>`;
   wirePanel(panel);
 }
 
 /* 能力目录：真实可用的搜索与状态过滤 */
 function wirePanel(panel) {
+  const spec = LIVE[panel.id];
+  if (spec && api.ok) {
+    const run = $("#run-live");
+    if (run) run.addEventListener("click", () => runLive(panel, spec));
+    document.querySelectorAll("[data-live-key]").forEach((element) => {
+      element.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") runLive(panel, spec);
+      });
+      element.addEventListener("change", () => {
+        const mirror = document.querySelector(`[data-live-out="${element.dataset.liveKey}"]`);
+        if (mirror) mirror.textContent = element.value;
+      });
+    });
+    // 打开面板就先跑一次：这一页的控件不是摆设，数字是现算的
+    runLive(panel, spec);
+    return;
+  }
   if (panel.id !== "catalog") return;
   const search = $(".controls input[type=text]");
   const status = $(".controls select");
@@ -523,7 +971,8 @@ $("#lib-version").textContent = DATA.lib.version;
 $("#chip-coverage").innerHTML = `${DATA.catalog.total} 条导出全部归属 · ${DATA.catalog.coverage.toFixed(1)}%`;
 $("#chip-progress").textContent = `面板数据 ${DATA.stats.ready}/${DATA.panels.length} 已出`;
 window.addEventListener("hashchange", () => activate(location.hash.slice(1)));
-activate(location.hash.slice(1) || DATA.panels[0].id);
+// 先探一次 /api/v1/health：在线就把整站切成实时调用，离线就退回静态快照
+apiProbe().finally(() => activate(location.hash.slice(1) || DATA.panels[0].id));
 </script>
 </body>
 </html>

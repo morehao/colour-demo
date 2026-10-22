@@ -51,6 +51,17 @@ def test_convert_contract():
     assert row["values"]["CIE Lab"] == pytest.approx([55.6333, 17.5542, -64.4155], abs=1e-3)
 
 
+def test_convert_default_spaces_all_resolve():
+    """默认 14 个核心空间必须全部出数（CAM16 UCS 在换算图里叫 cam16ucs，需要别名）。"""
+
+    body = client.post("/api/v1/convert", json={"colors": ["#3B82F6"], "target": "CAM16 UCS"}).json()
+    assert len(body["spaces"]) == 14
+    row = body["rows"][0]
+    assert all(value is not None for value in row["values"].values()), row["values"]
+    # 换算链路的节点名同样要走别名，否则 networkx 直接 NodeNotFound
+    assert body["conversion_hops"] >= 1
+
+
 def test_convert_unknown_space_is_422():
     response = client.post("/api/v1/convert", json={"colors": ["#3B82F6"], "target_spaces": ["No Such Space"]})
     _assert_error(response, 422, "value_error")
@@ -128,6 +139,16 @@ def test_gradient_contract_and_step_limits():
 
     _assert_error(client.post("/api/v1/gradient", json={"from": "#000000", "to": "#FFFFFF", "steps": 1}), 422, "value_error")
     _assert_error(client.post("/api/v1/gradient", json={"from": "#000000", "to": "#FFFFFF", "steps": 500}), 422, "value_error")
+
+
+def test_demo_page_ships_live_layer():
+    """原型页要带上「实时 API」层：健康探测 + 15 个面板适配器 + 离线退回静态快照。"""
+
+    body = client.get("/demo/").text
+    assert 'id="chip-api"' in body
+    assert "async function apiProbe" in body
+    for panel in ("convert", "delta-e", "chromaticity", "appearance", "cvd", "transfer"):
+        assert f"LIVE.{panel} =" in body or f'LIVE["{panel}"] =' in body
 
 
 def test_demo_page_is_served():
