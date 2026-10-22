@@ -118,6 +118,46 @@ function panelVerdictCard(panel) {
   });
 }
 
+function panelPresetCard(panel) {
+  if ((panel.presets || []).length !== 3) return "";
+  const ready = api.ok;
+  return `<section class="card preset-card"><div class="card-head"><h2>换组参数看看</h2>
+    <span class="hint">${ready ? "点一下，实时重算" : "需要本地服务"}</span></div>
+    <div class="card-body"><div class="preset-row" role="group" aria-label="参数示例">${panel.presets
+      .map((preset) => `<button type="button" class="preset" data-panel-preset="${esc(preset.id)}" aria-pressed="false"${ready ? "" : " disabled"}>${esc(preset.label)}</button>`)
+      .join("")}</div><div class="panel-live-out" id="panel-live-out">${ready
+        ? "点上面的示例，结果会按当前参数重算。"
+        : "当前是构建期快照；启动本地服务后，示例可实时重算。"}</div></div></section>`;
+}
+
+async function runPanelPreset(panel, presetId) {
+  const spec = LIVE[panel.id];
+  const preset = (panel.presets || []).find((item) => item.id === presetId);
+  const out = $("#panel-live-out");
+  if (!spec || !preset || !out) return;
+  const state = Object.fromEntries(liveFields(spec).map((field) => [field.key, field.value]));
+  Object.assign(state, preset.state);
+  out.textContent = "重新计算…";
+  try {
+    const target = spec.dataEndpoint ? { endpoint: spec.dataEndpoint, query: spec.query } : spec;
+    const { payload, elapsed } = await apiCall(target, state);
+    out.innerHTML = `<p class="small muted">实时结果 · ${elapsed} ms · ${esc(spec.endpoint)}</p>` +
+      spec.blocks(payload, state).map(renderBlock).join("");
+    if (typeof annotateTerms === "function") annotateTerms(out);
+  } catch (error) {
+    out.innerHTML = renderNote("warn", "没算出来", esc(humanError(error)));
+  }
+}
+
+function wirePanelPresets(panel) {
+  const buttons = Array.from(document.querySelectorAll("[data-panel-preset]"));
+  if (!buttons.length) return;
+  buttons.forEach((button) => button.addEventListener("click", () => {
+    buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+    runPanelPreset(panel, button.dataset.panelPreset);
+  }));
+}
+
 function renderReadCard(panel) {
   const lines = panel.read || [];
   if (!lines.length) return "";
@@ -152,6 +192,7 @@ function renderBeginnerPanel(panel) {
     </div>
     ${panelVerdictCard(panel)}
     ${beginnerPreview(panel)}
+    ${panelPresetCard(panel)}
     ${renderReadCard(panel)}
     <details class="principles">
       <summary>原理与专业参数</summary>
@@ -172,6 +213,7 @@ function renderBeginnerPanel(panel) {
       ${next ? `<a class="btn-ghost" href="#/ref/${next.id}">${esc(next.title_plain || next.title)} →</a>` : ""}
     </div>`;
   if (typeof annotateTerms === "function") annotateTerms($("#main"));
+  wirePanelPresets(panel);
 }
 
 /* 参考面板入口：专家模式保持原样；新手模式按 8.1 模板渲染 */

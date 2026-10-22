@@ -18,7 +18,7 @@ PROTOTYPE = ROOT / "docs" / "prototype"
 if str(PROTOTYPE) not in sys.path:
     sys.path.insert(0, str(PROTOTYPE))
 
-from gen import copy_lint, glossary, manifest, panel_copy, tasks, verdicts  # noqa: E402
+from gen import copy_lint, glossary, manifest, panel_copy, panel_presets, tasks, verdicts  # noqa: E402
 
 PANEL_IDS = set(manifest.PANEL_IDS)
 GLOSSARY = glossary.GLOSSARY
@@ -155,6 +155,17 @@ def test_task_fields_are_shareable():
             if field["kind"] in {"select", "method"}:
                 assert field["options"], (task["id"], field["key"])
                 assert field["value"] in field["options"], (task["id"], field["key"])
+
+
+def test_panel_presets_cover_input_panels():
+    """有输入控件的实时面板给 3 个示例；无输入的面板不硬造预设。"""
+    no_input = {"characterisation", "invoke", "api"}
+    for panel_id in manifest.LIVE_PANEL_IDS:
+        presets = panel_presets.PANEL_PRESETS.get(panel_id, [])
+        assert len(presets) == (0 if panel_id in no_input else 3), panel_id
+        assert len({preset[0] for preset in presets}) == len(presets), panel_id
+        for preset_id, label, state in presets:
+            assert preset_id and label and state, (panel_id, preset_id)
 
 
 def test_translate_template_uses_response_fields():

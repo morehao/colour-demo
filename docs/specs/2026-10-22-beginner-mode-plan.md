@@ -218,7 +218,7 @@ DATA = {
 | `question` | string | ≤ 30 字，必须是问句（以 `？` 结尾） | 构建失败 |
 | `plain` | string | 30–80 字，零禁用术语 | 构建失败 |
 | `why` | string | 15–50 字，描述使用场景 | 构建失败 |
-| `presets` | Preset[3] | 任务页必须 3 个；参考页以构建期快照展示，可为 `[]`（示例交互集中在任务页） | 允许空 |
+| `presets` | Preset[3] | 有输入控件的任务页/参考页各 3 个；无输入面板可为 `[]` | 允许空 |
 | `verdict` | string \| null | 必须在 `DATA.verdicts` 中存在 | `null` → 渲染"怎么读" |
 | `jargon` | string[] | 每项必须在 `DATA.glossary` 中存在 | 允许空 |
 
@@ -722,6 +722,7 @@ docs/prototype/
 │   ├── tasks.py               # 任务元数据（纯数据，无 colour 依赖）
 │   ├── glossary.py            # 40 条术语（纯数据）
 │   ├── panel_copy.py          # 29 个面板的新手文案与预览选择
+│   ├── panel_presets.py       # 25 个参考页的参数示例（只存覆盖项）
 │   └── verdicts.py            # 阈值与结论文案（纯数据）
 └── build_prototype.py         # --tasks / --merge，拼接 + 门禁
 ```
@@ -928,7 +929,7 @@ function annotateTerms(root) {
 
 > 35 人日是含审校与两轮可用性修复的完整口径；若砍掉 W6 的逐页润色、仅做模板化改写，可压到 28 人日，但不建议。
 
-> 实施进度（2026-10-22）：W1–W8 完成。29 页文案与 40 条术语通过文案 lint；`--merge --strict` 0 警告。参考页以构建期快照展示，不提供可切换预设，交互示例集中在 6 个任务页。任务输入已写入 URL query，复制链接可还原；支持 EyeDropper 的浏览器显示吸管按钮。W7 自动化回归通过，5 人可用性测试与 Lighthouse 未执行（需真实用户/浏览器环境）。
+> 实施进度（2026-10-22）：W1–W8 完成。29 页文案与 40 条术语通过文案 lint；`--merge --strict` 0 警告。25 个有输入的参考页各配 3 个参数示例：默认显示构建期快照，连上服务后点示例实时重算；无输入面板不硬造预设。任务输入已写入 URL query，复制链接可还原；支持 EyeDropper 的浏览器显示吸管按钮。W7 自动化回归通过，5 人可用性测试与 Lighthouse 未执行（需真实用户/浏览器环境）。
 
 ### 12.2 里程碑
 
@@ -1055,7 +1056,7 @@ function annotateTerms(root) {
 | 27 | `invoke` | 想直接调用一个函数 | 不装环境能算吗 | `CCT_to_xy` | 无 |
 | 28 | `api` | 想把颜色计算接进程序 | 有哪些接口、怎么调 | — | 无 |
 
-> 本表是改造验收清单：构建期校验字段齐全（G1/G2/G5），逐页文案按此表评审。参考页当前以构建期快照展示，不提供可切换预设；「默认示例」是页面示例值，交互示例集中在 6 个任务页（§4.2）。新增面板必须同时补这一行。
+> 本表是改造验收清单：构建期校验字段齐全（G1/G2/G5），逐页文案按此表评审。参考页的「默认示例」是构建期快照；有输入控件的页面另配 3 个参数示例，连上服务后可实时重算（§4.2）。新增面板必须同时补这一行和 `gen/panel_presets.py`。
 
 ---
 
@@ -1084,6 +1085,7 @@ function annotateTerms(root) {
 | `docs/prototype/ui/*.js` | 新增 13 个文件（§9.1） |
 | `docs/prototype/gen/common.py` | `panel()` 扩展 + 文案校验 |
 | `docs/prototype/gen/panel_copy.py` | 新增：29 个面板的新手文案、结论与预览选择 |
+| `docs/prototype/gen/panel_presets.py` | 新增：25 个有输入参考页的 3 组参数示例 |
 | `docs/prototype/gen/panels_core.py` 等 4 个 | 29 个面板补 `title_plain/question/plain/why/presets/verdict/jargon` |
 | `docs/prototype/gen/manifest.py` | 新增：面板/实时面板/任务 id 单一来源 |
 | `docs/prototype/gen/tasks.py` | 新增：6 个任务元数据 |
