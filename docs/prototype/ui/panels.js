@@ -89,14 +89,96 @@ function wirePanel(panel) {
   if (note) note.textContent = "本页控件在本原型中真实可用：输入关键字过滤名称，或按状态（面板 / 数据集 / 内部）筛选。";
 }
 
-/* 参考面板入口：专家模式保持原样；新手模式先给一句说明（W5 逐页换成新手模板） */
+/* 新手预览：优先挑最直观的一块，表格只露前 8 行 */
+function beginnerPreview(panel) {
+  const order = ["swatches", "strips", "chain", "image", "chart", "matrix", "stats", "table", "kv"];
+  const preferred = panel.preview ? panel.blocks.find((item) => item.type === panel.preview) : null;
+  const block = preferred || order.map((type) => panel.blocks.find((item) => item.type === type)).find(Boolean);
+  if (!block) return "";
+  if (block.type === "table" && block.rows.length > 8) {
+    return renderBlock({
+      ...block,
+      rows: block.rows.slice(0, 8),
+      note: `只显示前 8 行；完整 ${block.rows.length} 行在「原理与专业参数」里。`,
+    });
+  }
+  return renderBlock(block);
+}
+
+function panelVerdictCard(panel) {
+  if (panel.verdict_html) {
+    return Verdict.plain({ title: "一眼结论", html: panel.verdict_html, tone: panel.verdict_tone || "ok" });
+  }
+  if (!panel.verdict || !Number.isFinite(Number(panel.verdict_value))) return "";
+  return Verdict.card({
+    title: "一眼结论",
+    ruleId: panel.verdict,
+    value: Number(panel.verdict_value),
+    extra: panel.verdict_extra || "",
+  });
+}
+
+function renderReadCard(panel) {
+  const lines = panel.read || [];
+  if (!lines.length) return "";
+  return `<div class="card read-card"><div class="card-head"><h2>这页的数字怎么读</h2></div>
+    <div class="card-body"><ol class="read-list">${lines
+      .map((line) => `<li class="js-prose">${esc(line)}</li>`)
+      .join("")}</ol></div></div>`;
+}
+
+function renderBeginnerPanel(panel) {
+  const all = DATA.panels;
+  const index = all.findIndex((item) => item.id === panel.id);
+  const prev = index > 0 ? all[index - 1] : null;
+  const next = index >= 0 && index < all.length - 1 ? all[index + 1] : null;
+  const task = DATA.tasks.find((item) => item.tool === panel.id);
+  const lead = panel.lead.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  const footer = panel.footer
+    ? `<footer class="page-foot">${panel.footer.replace(/`([^`]+)`/g, "<code>$1</code>")}</footer>`
+    : "";
+  $("#main").innerHTML = `
+    <nav class="crumbs"><a href="#/">首页</a><span>›</span><a href="#/ref">参考手册</a>
+      <span>›</span>${esc(panel.group)}<span>›</span>${esc(panel.title_plain)}</nav>
+    <div class="panel-head beginner-head">
+      <div class="eyebrow">Panel ${panel.no} · ${esc(panel.group)}
+        <span class="tag ${PHASE_CLASS[panel.phase] || ""}" style="margin-left:8px">${esc(panel.phase)}</span>
+        ${panel.pending ? '<span class="tag tag--pending" style="margin-left:6px">数据待补充</span>' : ""}</div>
+      <h1>${esc(panel.title_plain)}</h1>
+      <p class="pro-name">专业名：${esc(panel.title)}</p>
+      <p class="lead js-prose">${esc(panel.plain)}</p>
+      <div class="answer-tag"><span>这页能回答</span><b class="js-prose">${esc(panel.question)}</b></div>
+      <p class="small muted">什么时候用：${esc(panel.why)}</p>
+    </div>
+    ${panelVerdictCard(panel)}
+    ${beginnerPreview(panel)}
+    ${renderReadCard(panel)}
+    <details class="principles">
+      <summary>原理与专业参数</summary>
+      <div class="principles-body">
+        <p class="small muted">档位是经验参考，不是标准强制值；换算法、换观察条件，数字都会变。</p>
+        <p class="lead js-prose">${lead}</p>
+        ${panel.blocks.map(renderBlock).join("")}
+        ${footer}
+        <p class="small muted">本页数据由 <code>colour-science ${DATA.lib.version}</code> 于构建时计算；相关接口：${panel.apis
+          .map((api) => `<code>${esc(api)}</code>`)
+          .join(" · ")}</p>
+      </div>
+    </details>
+    <div class="next-row">
+      ${task ? `<a class="btn-primary" href="#/task/${task.id}">去做：${esc(task.title)} →</a>` : ""}
+      <a class="btn-ghost" href="#/glossary">翻术语表</a>
+      ${prev ? `<a class="btn-ghost" href="#/ref/${prev.id}">← ${esc(prev.title_plain || prev.title)}</a>` : ""}
+      ${next ? `<a class="btn-ghost" href="#/ref/${next.id}">${esc(next.title_plain || next.title)} →</a>` : ""}
+    </div>`;
+  if (typeof annotateTerms === "function") annotateTerms($("#main"));
+}
+
+/* 参考面板入口：专家模式保持原样；新手模式按 8.1 模板渲染 */
 function renderRefPanel(panel) {
+  if (State.mode === "beginner" && panel.title_plain) {
+    renderBeginnerPanel(panel);
+    return;
+  }
   renderPanel(panel);
-  if (State.mode !== "beginner") return;
-  const main = $("#main");
-  if (!main) return;
-  const note = document.createElement("div");
-  note.className = "beginner-note";
-  note.innerHTML = "<b>这一页的新手说明还在接入</b><span>下面先显示专业原文；首页的 6 个任务已经是人话版。</span>";
-  main.prepend(note);
 }

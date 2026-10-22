@@ -721,6 +721,7 @@ docs/prototype/
 │   ├── manifest.py            # 面板/任务/实时面板 id 清单（单一来源）
 │   ├── tasks.py               # 任务元数据（纯数据，无 colour 依赖）
 │   ├── glossary.py            # 40 条术语（纯数据）
+│   ├── panel_copy.py          # 29 个面板的新手文案与预览选择
 │   └── verdicts.py            # 阈值与结论文案（纯数据）
 └── build_prototype.py         # --tasks / --merge，拼接 + 门禁
 ```
@@ -925,7 +926,7 @@ function annotateTerms(root) {
 
 > 35 人日是含审校与两轮可用性修复的完整口径；若砍掉 W6 的逐页润色、仅做模板化改写，可压到 28 人日，但不建议。
 
-> 实施进度（2026-10-22）：W1、W2 完成；W3 常用组件完成；W4 六个任务页代码完成（待评审）；W5/W6 待开始。
+> 实施进度（2026-10-22）：W1–W4 完成；W5 的 29 页新手文案、结论/读法卡与折叠模板完成，实时面板预设并入 W6；W6 进行中。
 
 ### 12.2 里程碑
 
@@ -1080,6 +1081,7 @@ function annotateTerms(root) {
 | `docs/prototype/index.template.html` | 外壳改版：顶栏、导航、`/*__UI__*/`、CSS 新增组件样式；删除内联脚本（迁至 `ui/`） |
 | `docs/prototype/ui/*.js` | 新增 13 个文件（§9.1） |
 | `docs/prototype/gen/common.py` | `panel()` 扩展 + 文案校验 |
+| `docs/prototype/gen/panel_copy.py` | 新增：29 个面板的新手文案、结论与预览选择 |
 | `docs/prototype/gen/panels_core.py` 等 4 个 | 29 个面板补 `title_plain/question/plain/why/presets/verdict/jargon` |
 | `docs/prototype/gen/manifest.py` | 新增：面板/实时面板/任务 id 单一来源 |
 | `docs/prototype/gen/tasks.py` | 新增：6 个任务元数据 |

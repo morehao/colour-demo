@@ -18,7 +18,7 @@ PROTOTYPE = ROOT / "docs" / "prototype"
 if str(PROTOTYPE) not in sys.path:
     sys.path.insert(0, str(PROTOTYPE))
 
-from gen import copy_lint, glossary, manifest, tasks, verdicts  # noqa: E402
+from gen import copy_lint, glossary, manifest, panel_copy, tasks, verdicts  # noqa: E402
 
 PANEL_IDS = set(manifest.PANEL_IDS)
 GLOSSARY = glossary.GLOSSARY
@@ -84,6 +84,22 @@ def test_task_colour_counts_within_bounds():
                     count,
                     field["max"],
                 )
+
+
+def test_panel_copy_covers_all_panels():
+    assert set(panel_copy.PANEL_COPY) == PANEL_IDS
+    for panel_id, copy in panel_copy.PANEL_COPY.items():
+        panel = {"no": panel_id, "id": panel_id, "presets": [], **copy}
+        errors, warnings = copy_lint.validate_panel_copy(panel)
+        assert not errors, (panel_id, errors)
+        assert not warnings, (panel_id, warnings)
+        assert len(copy["read"]) == 3, panel_id
+        assert copy["preview"] in {"chain", "convert", "kv", "table", "swatches", "strips", "image", "chart", "stats"}, panel_id
+        for term in copy["jargon"]:
+            assert term in GLOSSARY, (panel_id, term)
+        if copy.get("verdict"):
+            assert copy["verdict"] in verdicts.VERDICTS, panel_id
+            assert isinstance(copy.get("verdict_value"), (int, float)) or copy.get("verdict_html"), panel_id
 
 
 # --------------------------------------------------------------------------- #

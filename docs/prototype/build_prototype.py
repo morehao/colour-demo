@@ -441,6 +441,7 @@ def merge(*, strict: bool, started: float) -> None:
     from gen.tasks import TASKS
     from gen.verdicts import VERDICTS
     from gen.manifest_tail import stub_panels
+    from gen.panel_copy import apply_panel_copy
 
     panels = (
         json.loads((CACHE / "b1.json").read_text(encoding="utf-8"))
@@ -462,6 +463,7 @@ def merge(*, strict: bool, started: float) -> None:
         if stub["no"] not in have:
             panels.append(stub)
     panels.sort(key=lambda p: p["no"])
+    apply_panel_copy(panels)
     catalog = meta["catalog"]
 
     ids = [p["id"] for p in panels]
