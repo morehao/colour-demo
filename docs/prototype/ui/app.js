@@ -176,6 +176,16 @@ function boot() {
     $("#main").focus();
   });
   window.addEventListener("hashchange", applyRoute);
+  // `/` 聚焦当前页的搜索框（参考手册 / 术语表），输入框里不抢键
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target;
+    if (target && (target.closest("input, textarea, select, [contenteditable]") || target.isContentEditable)) return;
+    const search = $("#ref-search") || $("#glossary-search");
+    if (!search) return;
+    event.preventDefault();
+    search.focus();
+  });
   setMode(readMode(), { persist: false, rerender: false });
   applyRoute();
 

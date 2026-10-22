@@ -64,8 +64,13 @@ uv venv .venv && uv pip install --python .venv/bin/python -e ".[dev]"
 # 不想装包也可以：PYTHONPATH=src .venv/bin/python -m uvicorn colour_demo.main:app --port 8000
 # 打开 http://127.0.0.1:8000/docs 看 OpenAPI；静态原型在 http://127.0.0.1:8000/demo/
 
-# 测试：黄金值 + Sharma ΔE 参考对 + 接口契约
+# 测试：黄金值 + Sharma ΔE 参考对 + 接口契约 + 新手层数据契约
 .venv/bin/python -m pytest
+
+# 重建单文件原型（面板快照用 .tmp/panels 缓存）
+MPLCONFIGDIR=/tmp/mplcache .venv/bin/python docs/prototype/build_prototype.py --merge
+# 发布前严格门禁（文案、术语、任务、体积、旧链接全部硬失败）
+MPLCONFIGDIR=/tmp/mplcache .venv/bin/python docs/prototype/build_prototype.py --merge --strict
 ```
 
 已实现 **30 个端点**，覆盖面板 00–28（全部 29 页）：
@@ -193,7 +198,7 @@ docker run --rm -p 8000:8000 colour-demo
 1. `pip install -e ".[dev]"`
 2. **版本漂移门禁**：`assert_colour_version()` 必须等于 `SUPPORTED_COLOUR_VERSION`，不合格直接 fail
 3. 应用冒烟：导入 `app` 并断言 OpenAPI 里 `/api/` 端点恰好 30 个（防路由静默漏挂）
-4. `pytest`（75 项：黄金值 + Sharma ΔE 参考对 + 接口契约）
+4. `pytest`（91 项：黄金值 + Sharma ΔE 参考对 + 接口契约 + 新手层数据契约）
 
 ## 示例：现在就能跑的 `colour` 代码
 
